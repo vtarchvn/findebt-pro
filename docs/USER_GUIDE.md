@@ -181,3 +181,14 @@ Khi lưu, FINDEBT đồng thời chia sẻ thư mục Drive. Người nhận m�
 - **Import lỗi:** giữ nguyên header mẫu và sửa từng dòng theo thông báo lỗi.
 
 Xem thêm [Hướng dẫn quản trị triển khai](ADMIN_GUIDE.md) và [Quy tắc thanh toán](PAYMENTS.md).
+
+## 14. Giao diện nhanh và sổ công nợ mới
+
+- Khi mở app, skeleton xuất hiện ngay; kiểm tra Drive, backup và Data Console tiếp tục ở nền nên không cần chờ mới thao tác.
+- Khối **Hành động chính** trên Dashboard ưu tiên ghi nhận thu/trả tiền; thêm chứng từ, xử lý quá hạn và nhập hàng loạt là các lối tắt phụ.
+- Nhấn KPI phải thu hoặc nợ quá hạn để mở Sổ công nợ với bộ lọc tương ứng.
+- Sổ công nợ tải 40 dòng mỗi lần. Dùng **Tải thêm** để xem tiếp, tìm theo chứng từ/đối tượng, lọc còn nợ/quá hạn/đã trả và sắp xếp theo hạn hoặc dư nợ.
+- Nhấn một dòng để xem panel chi tiết, rồi thu/trả tiền hoặc tạo VietQR ngay tại đó.
+- Bộ lọc gần nhất được nhớ trên trình duyệt. Dữ liệu tài chính vẫn chỉ nằm trong Google Sheet của workspace.
+- Khi đổi đối tượng hoặc ngày chứng từ, hạn thanh toán tự đề xuất theo **Thời hạn nợ chuẩn** của đối tượng; kế toán vẫn có thể sửa trước khi lưu.
+- Trong **Cài đặt → Kiểm tra thông minh**, dùng **Kiểm tra lại** để quét backup, chất lượng dữ liệu và quyền Drive; dùng **Đồng bộ Data Console** khi muốn cập nhật ngay bảng `TONG_QUAN`.

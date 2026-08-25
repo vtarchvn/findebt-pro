@@ -86,3 +86,11 @@ Với deployment ổn định, ưu tiên `clasp redeploy` vào deployment ID hi�
 - Thử restore trên bản dữ liệu thử trước khi dùng với production.
 - Chỉ thêm thành viên trong màn hình Cài đặt để quyền Drive và vai trò server luôn đồng bộ.
 - Không chia sẻ thư mục bằng chế độ “Anyone with the link”.
+
+## 9. Vận hành cache và kiểm tra hiệu năng
+
+- Bootstrap cache tồn tại tối đa 120 giây nhưng khóa theo `DATA_VERSION`; các thao tác ghi nghiệp vụ tự tăng phiên bản và làm snapshot cũ hết hiệu lực.
+- Health workspace cache tối đa 5 phút. Nút **Kiểm tra lại** có thể vẫn dùng kết quả trong cửa sổ này; mutation thành viên hoặc dữ liệu sẽ đổi phiên bản và tạo khóa health mới.
+- `TONG_QUAN` không còn được ghi trên mọi lần mở app. Owner/Admin/Kế toán đồng bộ ở nền sau bootstrap hoặc bấm **Đồng bộ Data Console**.
+- Số `bootstrap ms`, trạng thái cache và data version hiển thị trong Dashboard/Cài đặt để hỗ trợ chẩn đoán; không chứa nội dung tài chính trong log trình duyệt.
+- Khi health báo quyền Drive không khớp, chỉ chỉnh thành viên qua FINDEBT để đồng bộ vai trò server và editor/viewer của thư mục gốc.

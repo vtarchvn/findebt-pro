@@ -12,7 +12,7 @@ export default [
   {
     files: ['src/server/**/*.js', 'src/infrastructure/schema.js', 'src/infrastructure/workspace.js'],
     languageOptions: {
-      globals: Object.fromEntries(['PropertiesService','SpreadsheetApp','Utilities','Session','MailApp','LockService','HtmlService','ScriptApp','DriveApp','DocumentApp','MimeType'].map(name => [name, 'readonly']))
+      globals: Object.fromEntries(['PropertiesService','CacheService','SpreadsheetApp','Utilities','Session','MailApp','LockService','HtmlService','ScriptApp','DriveApp','DocumentApp','MimeType'].map(name => [name, 'readonly']))
     }
   }
 ];

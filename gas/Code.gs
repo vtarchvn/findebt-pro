@@ -5,6 +5,9 @@ function connectWorkspace(rootFolderId) { return FinDebtApp.connectWorkspace(roo
 function disconnectWorkspace() { return FinDebtApp.disconnectWorkspace(); }
 function initialize(company) { return FinDebtApp.initialize(company); }
 function bootstrap() { return FinDebtApp.bootstrap(); }
+function loadWorkspaceHealth() { return FinDebtApp.loadWorkspaceHealth(); }
+function syncDataConsole() { return FinDebtApp.syncDataConsole(); }
+function loadDocumentsPage(query) { return FinDebtApp.loadDocumentsPage(query); }
 function savePartner(input) { return FinDebtApp.savePartner(input); }
 function createDocument(input) { return FinDebtApp.createDocument(input); }
 function recordPayment(input) { return FinDebtApp.recordPayment(input); }

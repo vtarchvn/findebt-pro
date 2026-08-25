@@ -17,5 +17,8 @@
 - [x] Manifest đặt `executeAs: USER_ACCESSING`
 - [ ] Kiểm tra light mode và tablet trên Apps Script deployment
 - [ ] Review OAuth access và MailApp quotas
-- [x] Apps Script production deployment version 4: `AKfycbzPMDvCufvzEEzwXh5gTX6qQLyEYWzxrCzpFdn4LU1HpgivOmlpn-VxZK6dx5T_ln8C`
+- [x] Skeleton, bootstrap cache, health nền và telemetry đã kiểm tra
+- [x] Phân trang/lọc/sắp xếp công nợ và batch import đã kiểm tra
+- [x] Action center, panel chi tiết, hạn thanh toán thông minh và saved view đã kiểm tra
+- [x] Apps Script production deployment version 5: `AKfycbzPMDvCufvzEEzwXh5gTX6qQLyEYWzxrCzpFdn4LU1HpgivOmlpn-VxZK6dx5T_ln8C`
 - [x] URL production yêu cầu đăng nhập Google và không còn chạy dữ liệu dùng chung dưới danh tính chủ deployment
