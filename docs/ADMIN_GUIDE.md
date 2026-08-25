@@ -1,0 +1,82 @@
+# Hướng dẫn quản trị và triển khai FINDEBT PRO
+
+## 1. Tài khoản sở hữu
+
+Người quản trị nên dùng một tài khoản doanh nghiệp ổn định, bật xác thực hai bước và không chia sẻ refresh token/clasp credentials.
+
+## 2. Bật Apps Script API
+
+Mở `https://script.google.com/home/usersettings`, chọn đúng Google account và bật **Google Apps Script API**.
+
+![Apps Script API đang bật](images/user-guide/11-apps-script-api.png)
+
+Quyền này cho phép clasp tạo/cập nhật project và deployment. Không commit `.clasprc.json` hoặc OAuth token vào GitHub.
+
+## 3. Cấp OAuth runtime
+
+Trong Apps Script editor:
+
+1. Chọn `Code.gs`.
+2. Chọn hàm `doGet` rồi **Run / Chạy**.
+3. Chọn **Review permissions**.
+4. Chọn tài khoản sở hữu project.
+5. Đọc scope rồi chọn **Allow**.
+
+Chỉ bỏ qua cảnh báo “unverified” với project do chính doanh nghiệp sở hữu và khi URL vẫn thuộc Google.
+
+## 4. Deployment production
+
+Trong **Deploy → Manage deployments**, kiểm tra:
+
+- Type: Web app.
+- Version: version production mới nhất.
+- Execute as: tài khoản chủ sở hữu.
+- Access: bất cứ ai có Google Account, hoặc giới hạn domain theo chính sách doanh nghiệp.
+
+![Deployment production](images/user-guide/12-production-deployment.png)
+
+URL production:
+
+`https://script.google.com/macros/s/AKfycbzPMDvCufvzEEzwXh5gTX6qQLyEYWzxrCzpFdn4LU1HpgivOmlpn-VxZK6dx5T_ln8C/exec`
+
+## 5. Khởi tạo datastore
+
+Chạy hàm `initialize` một lần. FINDEBT sẽ tạo `FINDEBT PRO — Data`, schema sheets, schema version và User Property liên kết datastore. Migration chỉ thêm sheet/cột thiếu, không xóa dữ liệu cũ.
+
+## 6. Trigger tự động
+
+Production phải có hai trigger time-driven:
+
+- `processReminders`: hằng ngày khoảng 08:00.
+- `createBackup`: hằng ngày khoảng 02:00.
+
+![Hai trigger tự động](images/user-guide/13-automation-triggers.png)
+
+Theo dõi tỷ lệ lỗi trong trang **Triggers** và chi tiết lỗi trong **Executions**. Apps Script có thể chạy lệch vài phút so với giờ cấu hình.
+
+## 7. Quy trình phát hành phiên bản mới
+
+```powershell
+npm run check
+npm run build
+npx clasp push
+npx clasp create-deployment --description "FINDEBT PRO release"
+```
+
+Với deployment ổn định, ưu tiên `clasp redeploy` vào deployment ID hiện tại để URL không đổi. Trước mỗi release:
+
+1. Tạo backup thủ công.
+2. Chạy critical accounting tests.
+3. Kiểm tra manifest scopes.
+4. Push GitHub.
+5. Deploy version mới.
+6. Smoke test dashboard, partial payment, VietQR, PDF và backup.
+
+## 8. Bảo mật vận hành
+
+- Không đưa `.clasp.json`, `.clasprc.json`, credentials hay token lên GitHub.
+- Không chia sẻ quyền sửa Google Sheet rộng hơn nhu cầu.
+- Không hard delete giao dịch tài chính.
+- Review audit log khi phát hiện chênh lệch.
+- Kiểm tra MailApp quota trước khi nhập lượng lớn khách hàng có bật reminder.
+- Thử restore trên bản dữ liệu thử trước khi dùng với production.

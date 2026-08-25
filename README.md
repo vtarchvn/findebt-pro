@@ -23,4 +23,4 @@ Yêu cầu duy nhất cho người triển khai: tài khoản Google và Node.js
 
 Các lệnh: `npm test`, `npm run lint`, `npm run build`, `npm run push`, `npm run deploy`, `npm run check`.
 
-Không commit `.clasp.json`, `.clasprc.json`, token hay credentials. Xem [Deployment](docs/DEPLOYMENT.md), [User guide](docs/USER_GUIDE.md) và [Architecture](ARCHITECTURE.md).
+Không commit `.clasp.json`, `.clasprc.json`, token hay credentials. Xem [Deployment](docs/DEPLOYMENT.md), [User guide có ảnh](docs/USER_GUIDE.md), [Admin guide](docs/ADMIN_GUIDE.md) và [Architecture](ARCHITECTURE.md).
