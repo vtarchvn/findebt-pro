@@ -46,12 +46,12 @@ function renameLegacySheet(spreadsheet, oldName, newName) { const legacy = sprea
 function ensureSystemSheet(spreadsheet, name, headers) {
   const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name); const existing = sheet.getLastColumn() ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
   if (!existing.some(Boolean)) sheet.getRange(1, 1, 1, headers.length).setValues([headers]); else { const missing = headers.filter(header => !existing.includes(header)); if (missing.length) sheet.getRange(1, existing.length + 1, 1, missing.length).setValues([missing]); }
-  sheet.setFrozenRows(1).setHiddenGridlines(true); sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground(COLORS.gray).setFontColor(COLORS.text).setWrap(true);
+  sheet.setFrozenRows(1); sheet.setHiddenGridlines(true); sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground(COLORS.gray).setFontColor(COLORS.text).setWrap(true);
   headers.forEach((header, index) => sheet.setColumnWidth(index + 1, /Tien|Du_No|Han_Muc/.test(header) ? 135 : /Email|Dia_Chi|Ghi_Chu|Noi_Dung|JSON|Loi/.test(header) ? 220 : 120)); ensureWarningProtection(sheet, 'FINDEBT: bảng hệ thống — hãy thao tác qua Web App');
 }
 
 function ensureStartSheet(spreadsheet) {
-  const sheet = spreadsheet.getSheetByName(USER_SHEETS.START) || spreadsheet.insertSheet(USER_SHEETS.START, 0); sheet.showSheet().setHiddenGridlines(true).setFrozenRows(0).setTabColor('#38bdf8');
+  const sheet = spreadsheet.getSheetByName(USER_SHEETS.START) || spreadsheet.insertSheet(USER_SHEETS.START, 0); sheet.showSheet(); sheet.setHiddenGridlines(true); sheet.setFrozenRows(0); sheet.setTabColor('#38bdf8');
   sheet.getRange('A1:H20').clearFormat().setBackground(COLORS.white).setFontColor(COLORS.text).setFontFamily('Arial'); safeMerge(sheet, 'A1:H2'); safeMerge(sheet, 'A4:H4'); safeMerge(sheet, 'A7:D7'); safeMerge(sheet, 'E7:H7');
   sheet.getRange('A1').setValue('FINDEBT PRO — BẮT ĐẦU').setFontSize(22).setFontWeight('bold').setFontColor(COLORS.navy).setVerticalAlignment('middle');
   sheet.getRange('A4').setValue('Google Sheet dùng để xem tổng thể, lọc và nhập hàng loạt. Giao dịch hằng ngày nên thực hiện trên Web App để giữ đúng kiểm tra và audit log.').setBackground(COLORS.blue).setFontColor(COLORS.navy).setWrap(true).setVerticalAlignment('middle');
@@ -64,27 +64,27 @@ function ensureStartSheet(spreadsheet) {
 }
 
 function ensureOverviewSheet(spreadsheet) {
-  const sheet = spreadsheet.getSheetByName(USER_SHEETS.OVERVIEW) || spreadsheet.insertSheet(USER_SHEETS.OVERVIEW); sheet.showSheet().setHiddenGridlines(true).setFrozenRows(5).setTabColor('#0ea5e9'); safeMerge(sheet, 'A1:H1'); safeMerge(sheet, 'A2:H2');
+  const sheet = spreadsheet.getSheetByName(USER_SHEETS.OVERVIEW) || spreadsheet.insertSheet(USER_SHEETS.OVERVIEW); sheet.showSheet(); sheet.setHiddenGridlines(true); sheet.setFrozenRows(5); sheet.setTabColor('#0ea5e9'); safeMerge(sheet, 'A1:H1'); safeMerge(sheet, 'A2:H2');
   sheet.getRange('A1').setValue('FINDEBT PRO — TỔNG QUAN').setBackground(COLORS.blue).setFontColor(COLORS.navy).setFontSize(18).setFontWeight('bold'); sheet.getRange('A2').setValue('Snapshot quản trị: dữ liệu do Web App tính và đồng bộ, không nhập trực tiếp tại đây.').setFontColor(COLORS.muted).setWrap(true);
   sheet.getRange('A4:H4').setValues([['Chỉ số', 'Phải thu', 'Phải trả', 'Công nợ ròng', 'Quá hạn', 'Đối tượng', 'Chứng từ mở', 'Cập nhật']]); styleHeader(sheet.getRange('A4:H4')); sheet.getRange('A7:H7').setValues([['Mức độ', 'Đối tượng', 'Chứng từ', 'Hạn thanh toán', 'Còn lại', 'Quá hạn (ngày)', 'Trạng thái', 'Sức khỏe']]); styleHeader(sheet.getRange('A7:H7'));
   sheet.getRange('B5:E5').setNumberFormat('#,##0 "₫"'); sheet.getRange('H5').setNumberFormat('dd/mm/yyyy hh:mm'); sheet.setColumnWidths(1, 8, 135); sheet.setColumnWidth(2, 210); sheet.setColumnWidth(3, 150); applyOverviewRules(sheet); ensureWarningProtection(sheet, 'FINDEBT: dashboard tự động — không sửa trực tiếp');
 }
 
 function ensureDebtSheet(spreadsheet) {
-  const sheet = spreadsheet.getSheetByName(USER_SHEETS.DEBTS) || spreadsheet.insertSheet(USER_SHEETS.DEBTS); sheet.showSheet().setHiddenGridlines(true).setFrozenRows(5).setTabColor('#22c55e'); safeMerge(sheet, 'A1:J1'); safeMerge(sheet, 'A2:J2');
+  const sheet = spreadsheet.getSheetByName(USER_SHEETS.DEBTS) || spreadsheet.insertSheet(USER_SHEETS.DEBTS); sheet.showSheet(); sheet.setHiddenGridlines(true); sheet.setFrozenRows(5); sheet.setTabColor('#22c55e'); safeMerge(sheet, 'A1:J1'); safeMerge(sheet, 'A2:J2');
   sheet.getRange('A1').setValue('SỔ CÔNG NỢ — CHẾ ĐỘ XEM').setBackground(COLORS.blue).setFontColor(COLORS.navy).setFontSize(18).setFontWeight('bold'); sheet.getRange('A2').setValue('Dùng bộ lọc ở hàng tiêu đề để tìm đối tượng, khoản còn nợ, quá hạn hoặc đã thanh toán.').setFontColor(COLORS.muted).setWrap(true);
   sheet.getRange(5, 1, 1, DEBT_HEADERS.length).setValues([DEBT_HEADERS]); styleHeader(sheet.getRange(5, 1, 1, DEBT_HEADERS.length)); sheet.getRange('E6:F1005').setNumberFormat('dd/mm/yyyy'); sheet.getRange('G6:H1005').setNumberFormat('#,##0 "₫"'); sheet.setColumnWidths(1, 10, 130); sheet.setColumnWidth(2, 155); sheet.setColumnWidth(3, 220); sheet.setColumnWidth(10, 145); resetFilter(sheet, 5, DEBT_HEADERS.length); applyDebtRules(sheet); ensureWarningProtection(sheet, 'FINDEBT: sổ xem tự động — ghi dữ liệu trên Web App');
 }
 
 function ensureInputSheet(spreadsheet, name, headers, title, description) {
-  const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name); const headerRow = findHeaderRow(sheet, headers[0]); if (headerRow === 1) sheet.insertRowsBefore(1, 4); sheet.showSheet().setHiddenGridlines(true).setFrozenRows(5).setTabColor('#f59e0b');
+  const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name); const headerRow = findHeaderRow(sheet, headers[0]); if (headerRow === 1) sheet.insertRowsBefore(1, 4); sheet.showSheet(); sheet.setHiddenGridlines(true); sheet.setFrozenRows(5); sheet.setTabColor('#f59e0b');
   safeMerge(sheet, `A1:${columnLetter(headers.length)}1`); safeMerge(sheet, `A2:${columnLetter(headers.length)}2`); sheet.getRange('A1').setValue(title.toUpperCase()).setBackground(COLORS.blue).setFontColor(COLORS.navy).setFontSize(18).setFontWeight('bold'); sheet.getRange('A2').setValue(description).setFontColor(COLORS.muted).setWrap(true); sheet.getRange('A4').setValue('Ô xanh nhạt: được nhập  ·  Ô xám: hệ thống tính  ·  Đỏ: cần sửa  ·  Đánh dấu Sẵn sàng nhập khi hoàn tất.').setFontColor(COLORS.navy).setFontSize(10);
   ensureHeadersAtRow(sheet, headers, 5); styleHeader(sheet.getRange(5, 1, 1, headers.length)); sheet.getRange(6, 1, 995, headers.length - 2).setBackground(COLORS.cyan); sheet.getRange(6, headers.length - 1, 995, 2).setBackground(COLORS.gray); applyInputValidation(sheet, name, headers); applyInputFormulas(sheet, name, headers); addHeaderNotes(sheet, headers); resetFilter(sheet, 5, headers.length); applyInputRules(sheet, headers);
   headers.forEach((header, index) => sheet.setColumnWidth(index + 1, /Dia_Chi|Ghi_Chu|Dien_Giai|Loi/.test(header) ? 240 : /Ten_DT|Ma_DT/.test(header) ? 210 : 145)); protectCalculatedColumns(sheet, headers);
 }
 
 function ensureImportResultsSheet(spreadsheet) {
-  const sheet = spreadsheet.getSheetByName(USER_SHEETS.IMPORT_RESULTS) || spreadsheet.insertSheet(USER_SHEETS.IMPORT_RESULTS); sheet.showSheet().setHiddenGridlines(true).setFrozenRows(6).setTabColor('#a855f7'); safeMerge(sheet, 'A1:F1'); safeMerge(sheet, 'A2:F2');
+  const sheet = spreadsheet.getSheetByName(USER_SHEETS.IMPORT_RESULTS) || spreadsheet.insertSheet(USER_SHEETS.IMPORT_RESULTS); sheet.showSheet(); sheet.setHiddenGridlines(true); sheet.setFrozenRows(6); sheet.setTabColor('#a855f7'); safeMerge(sheet, 'A1:F1'); safeMerge(sheet, 'A2:F2');
   sheet.getRange('A1').setValue('KẾT QUẢ KIỂM TRA & NHẬP DỮ LIỆU').setBackground(COLORS.blue).setFontColor(COLORS.navy).setFontSize(18).setFontWeight('bold'); sheet.getRange('A2').setValue('Kết quả gần nhất từ Web App. Dòng lỗi giữ nguyên để người dùng quay lại tab nhập và sửa.').setFontColor(COLORS.muted).setWrap(true); sheet.getRange('A4:F4').setValues([['Mã import', 'Loại', 'Tổng dòng', 'Hợp lệ', 'Lỗi', 'Cập nhật']]); styleHeader(sheet.getRange('A4:F4')); sheet.getRange('A6:F6').setValues([['Dòng', 'Mức độ', 'Nội dung lỗi', 'Dữ liệu', 'Trạng thái', 'Gợi ý xử lý']]); styleHeader(sheet.getRange('A6:F6')); sheet.setColumnWidths(1, 6, 135); sheet.setColumnWidth(3, 300); sheet.setColumnWidth(4, 320); sheet.setColumnWidth(6, 240); sheet.getRange('A7:F100').setWrap(true); applyImportResultRules(sheet); ensureWarningProtection(sheet, 'FINDEBT: kết quả nhập tự động');
 }
 
