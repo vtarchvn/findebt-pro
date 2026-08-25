@@ -1,6 +1,6 @@
 {
   "name": "findebt-pro",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "private": true,
   "description": "FINDEBT PRO - Vietnamese receivables and payables management on Google Apps Script",
   "type": "module",
