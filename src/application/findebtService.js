@@ -36,6 +36,8 @@ export class FinDebtService {
     if (!Object.values(DOC_TYPES).includes(input.Loai_Cong_No)) throw new Error('Loại công nợ không hợp lệ');
     const partners = this.store.all('DOI_TUONG'); const partner = partners.find(p => p.Ma_DT === input.Ma_DT && p.Trang_Thai !== 'DA_HUY');
     if (!partner) throw new Error('Đối tượng không tồn tại');
+    const duplicate = this.store.all('CHUNG_TU_CONG_NO').find(row => row.Ma_DT === input.Ma_DT && row.Loai_Cong_No === input.Loai_Cong_No && String(row.So_Chung_Tu).trim().toLocaleLowerCase('vi-VN') === String(input.So_Chung_Tu).trim().toLocaleLowerCase('vi-VN') && row.Trang_Thai_Ban_Ghi !== 'DA_HUY');
+    if (duplicate) throw new Error('Số chứng từ đã tồn tại với đối tượng và loại công nợ này');
     const amount = moneyPositive(input.So_Tien_Goc); const model = this.accountingModel(new Date());
     const partnerDebt = model.summary.rows.filter(d => d.Ma_DT === input.Ma_DT && d.Loai_Cong_No === DOC_TYPES.RECEIVABLE).reduce((sum, d) => sum + d.outstanding, 0);
     const credit = input.Loai_Cong_No === DOC_TYPES.RECEIVABLE ? creditLimitCheck(partnerDebt, amount, money(partner.Han_Muc_Tin_Dung)) : null;

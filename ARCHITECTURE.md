@@ -4,11 +4,13 @@ FINDEBT dùng clean layering:
 
 - `src/domain`: accounting core thuần JavaScript, không phụ thuộc Google APIs.
 - `src/application`: use cases, validation, audit và orchestration.
-- `src/infrastructure`: batch Sheet store, schema/migration.
+- `src/infrastructure`: batch Sheet store, schema/migration và Workspace Manager cho Drive/manifest.
 - `src/server`: adapter cho Apps Script, Drive, Mail, triggers và RPC.
 - `web`: single-page responsive UI; không quyết định số liệu tài chính.
 - `gas`: top-level Apps Script entry points.
 
-`esbuild` bundle server thành `dist/Bundle.js`; `Code.gs` giữ các hàm global mà Apps Script yêu cầu. User Properties lưu Spreadsheet ID riêng của người triển khai. Financial records chỉ được void/reverse; Audit Log lưu before/after.
+`esbuild` bundle server thành `dist/Bundle.js`; `Code.gs` giữ các hàm global mà Apps Script yêu cầu. Web app chạy bằng người truy cập. User Properties của từng tài khoản chỉ lưu `workspaceId`, Root Folder ID và Spreadsheet ID; nguồn sự thật có thể khôi phục là `99_SYSTEM/FINDEBT_MANIFEST.json` và bảng `CONFIG`. Financial records chỉ được void/reverse; Audit Log lưu before/after.
 
-ADR-001: Google Sheets là datastore để không cần server/database. ADR-002: tiền VND là safe integer. ADR-003: trạng thái/outstanding luôn được dựng lại từ chứng từ và phân bổ đang hiệu lực.
+Mỗi workspace có một thư mục gốc với các nhánh đánh số `00_HUONG_DAN` đến `99_SYSTEM`. Thành viên được kiểm tra hai lớp: quyền Drive và bảng `THANH_VIEN`. `ScriptLock` bảo vệ ghi đồng thời giữa nhiều kế toán dùng chung workspace. Snapshot đặt `WORKSPACE_MODE=SNAPSHOT` và bị chặn ghi phía server.
+
+ADR-001: Google Sheets là datastore để không cần server/database. ADR-002: tiền VND là safe integer. ADR-003: trạng thái/outstanding luôn được dựng lại từ chứng từ và phân bổ đang hiệu lực. ADR-004: mỗi workspace là một tenant độc lập trong Drive của người dùng. ADR-005: User Properties là con trỏ/cache, manifest và Sheet config cho phép liên kết lại mà không phụ thuộc tên thư mục.

@@ -3,6 +3,9 @@ import { readFile } from 'node:fs/promises';
 
 const demo = {
   config: { TEN_DOANH_NGHIEP: 'Công ty Minh An', THEME: 'dark' },
+  workspace: { workspaceId: 'WS-DEMO2026', email: 'owner@minhan.vn', role: 'OWNER', spreadsheetUrl: '#sheet-console', rootFolderUrl: '#drive-workspace' },
+  members: [{ email: 'owner@minhan.vn', role: 'OWNER' }, { email: 'ketoan@minhan.vn', role: 'ACCOUNTANT' }],
+  health: { score: 90, issues: [{ level: 'MEDIUM', code: 'STALE_BACKUP', message: 'Backup gần nhất đã 8 ngày.' }], metrics: { backups: 3, lastBackupAt: '2026-08-17T02:00:00.000Z', duplicateNames: 0, invalidEmails: 0, orphanDocuments: 0 } },
   partners: [
     { Ma_DT: 'KH-ANPHAT', Ten_DT: 'Công ty An Phát', Phan_Loai: 'KHACH_HANG', So_Dien_Thoai: '0901 234 567', Email: 'ketoan@example.vn', Han_Muc_Tin_Dung: 500000000, Cho_Phep_Nhac_No: true },
     { Ma_DT: 'KH-HOANGGIA', Ten_DT: 'Nội thất Hoàng Gia', Phan_Loai: 'KHACH_HANG', So_Dien_Thoai: '0909 888 222', Email: 'finance@example.vn', Han_Muc_Tin_Dung: 300000000, Cho_Phep_Nhac_No: true },
@@ -18,9 +21,9 @@ const demo = {
 };
 demo.dashboard.overdue = demo.documents.filter(row => row.daysOverdue > 0);
 
-createServer(async (_request, response) => {
+createServer(async (request, response) => {
   let html = await readFile(new URL('../web/Index.html', import.meta.url), 'utf8');
   html = html.replace('setupNav();renderIcons();', `state=${JSON.stringify(demo)};setupNav();renderIcons();`);
-  html = html.replace("};load();\n</script>", "};render();\n</script>");
+  html = html.replace("};load();\n</script>", request.url.includes('setup=1') ? "};showSetup({email:'owner@minhan.vn'});\n</script>" : "};render();\n</script>");
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); response.end(html);
 }).listen(4173, '127.0.0.1', () => console.log('Preview: http://127.0.0.1:4173'));

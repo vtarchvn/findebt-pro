@@ -9,7 +9,10 @@ Tài liệu này dành cho kế toán, chủ doanh nghiệp và người theo d�
 3. Trong lần mở đầu, Google có thể hiển thị **Authorization required**.
 4. Chọn **Review permissions / Xem lại quyền**, chọn đúng tài khoản Google.
 5. Nếu Google ghi ứng dụng chưa được xác minh, chọn **Advanced / Nâng cao** → **Go to FINDEBT PRO**. Chỉ thực hiện khi URL thuộc `script.google.com` và project do doanh nghiệp sở hữu.
-6. Đọc danh sách quyền rồi chọn **Allow / Cho phép**. FINDEBT cần Sheets để lưu dữ liệu, Drive để tạo PDF/backup, Mail để gửi nhắc nợ và Script Triggers để chạy lịch tự động.
+6. Đọc danh sách quyền rồi chọn **Allow / Cho phép**. FINDEBT chạy bằng chính tài khoản đang truy cập và cần Sheets để lưu dữ liệu, Drive để tạo PDF/backup, Mail để gửi nhắc nợ và Script Triggers để chạy lịch tự động.
+7. Chọn **Tạo workspace mới** hoặc dán link thư mục gốc đã được chủ doanh nghiệp chia sẻ. Ứng dụng không tự tạo Sheet trước khi bạn chọn.
+
+Mỗi workspace nằm trong một thư mục `FINDEBT_PRO — Tên doanh nghiệp`. Người có URL Web App nhưng không có quyền Drive và không có tên trong bảng thành viên sẽ không đọc được dữ liệu của workspace.
 
 Nếu trình duyệt đăng nhập nhiều Google account và hiện “Không tìm thấy trang”, mở URL bằng cửa sổ ẩn danh hoặc Chrome profile chỉ đăng nhập tài khoản cần dùng. Đây là giới hạn chọn profile của Google Apps Script, không phải lỗi mất deployment.
 
@@ -115,9 +118,11 @@ Trong giai đoạn nhập dữ liệu thử, để trống email hoặc tắt **
 
 - **PDF công nợ:** chọn đối tượng rồi tạo phiếu snapshot tại thời điểm hiện tại.
 - **Export CSV:** xuất đối tượng, chứng từ hoặc thanh toán; file có BOM để Excel đọc tiếng Việt.
-- **Import CSV:** chọn loại dữ liệu và file tối đa 2 MB. Hệ thống validate trước khi ghi và trả lỗi theo từng dòng.
-- **Backup ngay:** tạo bản sao Google Sheet trong `FINDEBT_PRO/BACKUPS`.
+- **Import CSV:** chọn loại dữ liệu và file tối đa 2 MB. Bước **Kiểm tra file** chỉ xem trước; chỉ nút **Xác nhận nhập** mới ghi dữ liệu. Nếu một dòng lỗi, cả đợt bị chặn.
+- **Import từ Sheet:** dán hàng loạt vào `NHAP_DOI_TUONG` hoặc `NHAP_CHUNG_TU`, sau đó chọn **Nhập từ Sheet staging**.
+- **Backup ngay:** tạo bản sao Google Sheet trong `05_BACKUPS`.
 - **Khôi phục:** luôn tạo thêm bản `BEFORE_RESTORE` trước khi ghi đè dữ liệu hiện tại.
+- **Nhân bản workspace:** Owner có thể tạo mẫu trống, bản sao đầy đủ hoặc snapshot chỉ đọc. Mọi bản sao có workspace ID mới và tắt reminder mặc định.
 
 Không khôi phục backup khi người khác đang nhập giao dịch. Nên thực hiện ngoài giờ và kiểm tra lại tổng phải thu/phải trả ngay sau restore.
 
@@ -137,7 +142,7 @@ Nhập mã ngân hàng, số tài khoản, tên chủ tài khoản và tên hi�
 
 ![Dashboard mobile](images/user-guide/10-mobile-dashboard.png)
 
-Mobile có bottom navigation dành riêng cho Tổng quan, Đối tượng, Công nợ, Thu/Trả tiền và Nhắc nợ. Ưu tiên trên điện thoại:
+Mobile có bottom navigation cho Tổng quan, Đối tượng, Công nợ, Nhắc nợ và menu **Thêm**. Menu Thêm mở Thu/Trả tiền, Báo cáo/Import và Cài đặt/Phân quyền. Ưu tiên trên điện thoại:
 
 1. Xem khoản quá hạn.
 2. Tìm khách hàng/chứng từ.
@@ -145,7 +150,17 @@ Mobile có bottom navigation dành riêng cho Tổng quan, Đối tượng, Côn
 4. Ghi nhận thu tiền ngay sau khi ngân hàng báo có.
 5. Kiểm tra lời hẹn và lịch sử nhắc nợ.
 
-## 11. Checklist cuối ngày cho kế toán
+## 11. Chia sẻ cho kế toán hoặc người xem
+
+Chỉ Owner mở **Cài đặt → Thành viên**, nhập email Google và chọn vai trò:
+
+- **Quản trị:** cấu hình ngân hàng, trigger và nghiệp vụ.
+- **Kế toán:** ghi đối tượng, chứng từ, thanh toán, import và backup.
+- **Chỉ xem:** xem dashboard, Sheet và xuất dữ liệu; không được ghi.
+
+Khi lưu, FINDEBT đồng thời chia sẻ thư mục Drive. Người nhận mở Web App, chọn **Liên kết workspace** và dán link thư mục gốc. Gỡ thành viên sẽ thu hồi cả quyền phía ứng dụng và quyền thư mục Drive.
+
+## 12. Checklist cuối ngày cho kế toán
 
 1. Đối chiếu các khoản ngân hàng báo có với thanh toán đã ghi nhận.
 2. Kiểm tra thanh toán chưa phân bổ hết.
@@ -154,7 +169,7 @@ Mobile có bottom navigation dành riêng cho Tổng quan, Đối tượng, Côn
 5. Kiểm tra backup gần nhất.
 6. Không sửa/xóa trực tiếp dòng tài chính trong Google Sheet.
 
-## 12. Xử lý sự cố nhanh
+## 13. Xử lý sự cố nhanh
 
 - **Không tìm thấy trang:** dùng profile chỉ đăng nhập một Google account.
 - **Authorization required:** chọn đúng tài khoản và cấp đủ quyền.

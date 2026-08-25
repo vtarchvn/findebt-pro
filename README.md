@@ -8,6 +8,9 @@ Quản trị công nợ phải thu/phải trả miễn phí cho doanh nghiệp V
 - Outstanding, trạng thái, aging và hạn mức tín dụng được tính phía server.
 - VietQR theo đúng số tiền còn phải thu; reminder chống gửi trùng và dừng khi trả đủ.
 - Promise to Pay, PDF công nợ, CSV, backup/restore Drive và audit log.
+- Workspace riêng theo tài khoản Google; wizard tạo mới hoặc liên kết thư mục Drive đã được chia sẻ.
+- Google Sheet Data Console, staging nhập hàng loạt, phân quyền Owner/Admin/Kế toán/Viewer.
+- Nhân bản mẫu trống, bản sao đầy đủ hoặc snapshot chỉ đọc; kiểm tra sức khỏe dữ liệu và backup.
 - Dark/light mode; giao diện riêng cho desktop, tablet và mobile.
 
 ## Triển khai lần đầu
@@ -17,8 +20,8 @@ Yêu cầu duy nhất cho người triển khai: tài khoản Google và Node.js
 1. Tạo một Apps Script project tại [script.google.com](https://script.google.com), mở **Project settings** và chép Script ID.
 2. Chạy `npm install`, `npm run setup`, thay `YOUR_SCRIPT_ID` trong `.clasp.json`.
 3. Chạy `npx clasp login`, `npm run push`.
-4. Trong Apps Script chọn **Deploy → New deployment → Web app**, Execute as **User deploying**, chọn phạm vi truy cập phù hợp tổ chức.
-5. Mở URL, cấp quyền Google, nhập tên doanh nghiệp và nhấn **Khởi tạo FINDEBT**.
+4. Trong Apps Script chọn **Deploy → New deployment → Web app**, Execute as **User accessing the web app**, chọn phạm vi truy cập phù hợp tổ chức.
+5. Mở URL, cấp quyền Google, chọn **Tạo workspace mới** hoặc **Liên kết workspace** đã được chia sẻ.
 6. Trong Nhắc nợ, bật trigger hằng ngày nếu muốn gửi email tự động.
 
 Các lệnh: `npm test`, `npm run lint`, `npm run build`, `npm run push`, `npm run deploy`, `npm run check`.

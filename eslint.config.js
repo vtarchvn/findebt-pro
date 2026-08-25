@@ -10,7 +10,7 @@ export default [
     rules: { 'no-unused-vars': ['error', { argsIgnorePattern: '^_' }] }
   },
   {
-    files: ['src/server/**/*.js'],
+    files: ['src/server/**/*.js', 'src/infrastructure/schema.js', 'src/infrastructure/workspace.js'],
     languageOptions: {
       globals: Object.fromEntries(['PropertiesService','SpreadsheetApp','Utilities','Session','MailApp','LockService','HtmlService','ScriptApp','DriveApp','DocumentApp','MimeType'].map(name => [name, 'readonly']))
     }

@@ -2,7 +2,9 @@
 
 ## Bootstrap thủ công một lần
 
-Tạo Apps Script project, lấy Script ID, `npm install`, `npm run setup`, cập nhật `.clasp.json`, chạy `npx clasp login`, rồi `npm run push`. Deploy Web App trong Apps Script. Lần mở đầu cần chấp thuận OAuth; FINDEBT tự tạo Google Sheet và folder Drive khi cần.
+Tạo Apps Script project, lấy Script ID, `npm install`, `npm run setup`, cập nhật `.clasp.json`, chạy `npx clasp login`, rồi `npm run push`. Deploy Web App với **Execute as: User accessing the web app**. Lần mở đầu cần chấp thuận OAuth; FINDEBT chỉ tạo Google Sheet/cây Drive sau khi người dùng chọn **Tạo workspace mới**.
+
+Không phát hành bản nhiều người với `USER_DEPLOYING`: cấu hình đó làm mọi Drive/Sheet call chạy dưới danh tính chủ deployment và có thể biến dữ liệu thành kho dùng chung ngoài ý muốn.
 
 ## GitHub Actions
 

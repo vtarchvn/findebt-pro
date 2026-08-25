@@ -30,7 +30,7 @@ Trong **Deploy → Manage deployments**, kiểm tra:
 
 - Type: Web app.
 - Version: version production mới nhất.
-- Execute as: tài khoản chủ sở hữu.
+- Execute as: **User accessing the web app**.
 - Access: bất cứ ai có Google Account, hoặc giới hạn domain theo chính sách doanh nghiệp.
 
 ![Deployment production](images/user-guide/12-production-deployment.png)
@@ -39,9 +39,13 @@ URL production:
 
 `https://script.google.com/macros/s/AKfycbzPMDvCufvzEEzwXh5gTX6qQLyEYWzxrCzpFdn4LU1HpgivOmlpn-VxZK6dx5T_ln8C/exec`
 
+Tuyệt đối không chọn **User deploying** cho production nhiều người. Sau khi cập nhật deployment cũ, mở bằng một tài khoản Google khác và xác nhận wizard xuất hiện thay vì dữ liệu của chủ app.
+
 ## 5. Khởi tạo datastore
 
-Chạy hàm `initialize` một lần. FINDEBT sẽ tạo `FINDEBT PRO — Data`, schema sheets, schema version và User Property liên kết datastore. Migration chỉ thêm sheet/cột thiếu, không xóa dữ liệu cũ.
+Mở Web App và chọn **Tạo workspace mới**. FINDEBT tạo một thư mục gốc, cây thư mục đánh số, Google Sheet Data Console, schema version 2, manifest và User Properties liên kết. Với datastore version 1, lần mở đầu của chủ dữ liệu tái sử dụng thư mục `FINDEBT_PRO`, chuyển nội dung `BACKUPS`/`REPORTS` vào nhánh mới và chuyển Sheet vào `01_DATA`; dữ liệu tài chính không bị xóa.
+
+Không đổi tên hoặc di chuyển riêng Sheet ra khỏi thư mục gốc. Nếu User Properties bị mất, dùng **Liên kết workspace** với link thư mục gốc để phục hồi con trỏ từ manifest.
 
 ## 6. Trigger tự động
 
@@ -80,3 +84,5 @@ Với deployment ổn định, ưu tiên `clasp redeploy` vào deployment ID hi�
 - Review audit log khi phát hiện chênh lệch.
 - Kiểm tra MailApp quota trước khi nhập lượng lớn khách hàng có bật reminder.
 - Thử restore trên bản dữ liệu thử trước khi dùng với production.
+- Chỉ thêm thành viên trong màn hình Cài đặt để quyền Drive và vai trò server luôn đồng bộ.
+- Không chia sẻ thư mục bằng chế độ “Anyone with the link”.

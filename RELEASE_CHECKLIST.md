@@ -10,6 +10,12 @@
 - [ ] Thử email reminder, chống trùng và dừng khi paid
 - [ ] Thử PDF, CSV, backup và restore trên dữ liệu thử
 - [x] Kiểm tra desktop và mobile responsive bằng browser smoke test
+- [x] Wizard tạo/liên kết workspace hiển thị đúng trên mobile
+- [x] Vai trò Owner/Viewer và menu quản trị hiển thị đúng
+- [x] Import có bước preview và chặn commit khi còn lỗi
+- [x] Snapshot bị chặn ghi phía server
+- [x] Manifest đặt `executeAs: USER_ACCESSING`
 - [ ] Kiểm tra light mode và tablet trên Apps Script deployment
 - [ ] Review OAuth access và MailApp quotas
-- [ ] Tạo Apps Script version/deployment, ghi URL và rollback version
+- [x] Apps Script production deployment version 3: `AKfycbzPMDvCufvzEEzwXh5gTX6qQLyEYWzxrCzpFdn4LU1HpgivOmlpn-VxZK6dx5T_ln8C`
+- [x] URL production yêu cầu đăng nhập Google và không còn chạy dữ liệu dùng chung dưới danh tính chủ deployment
