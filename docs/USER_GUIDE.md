@@ -121,7 +121,8 @@ Trong giai đoạn nhập dữ liệu thử, để trống email hoặc tắt **
 - **PDF công nợ:** chọn đối tượng rồi tạo phiếu snapshot tại thời điểm hiện tại.
 - **Export CSV:** xuất đối tượng, chứng từ hoặc thanh toán; file có BOM để Excel đọc tiếng Việt.
 - **Import CSV:** chọn loại dữ liệu và file tối đa 2 MB. Bước **Kiểm tra file** chỉ xem trước; chỉ nút **Xác nhận nhập** mới ghi dữ liệu. Nếu một dòng lỗi, cả đợt bị chặn.
-- **Import từ Sheet:** dán hàng loạt vào `NHAP_DOI_TUONG` hoặc `NHAP_CHUNG_TU`, sau đó chọn **Nhập từ Sheet staging**.
+- **Import từ Sheet:** dán hàng loạt vào `03_NHẬP_ĐỐI_TƯỢNG` hoặc `04_NHẬP_CHỨNG_TỪ`, sửa các ô được báo lỗi, đánh dấu cột **Sẵn sàng nhập**, sau đó chọn **Nhập các dòng đã chọn** trên Web App. Kết quả gần nhất nằm tại `05_KẾT_QUẢ_NHẬP`.
+- **Xem tổng thể:** dùng `01_TỔNG_QUAN` cho KPI/cảnh báo và `02_CÔNG_NỢ` để lọc công nợ. Sau khi ghi dữ liệu trên app, hệ thống tự đồng bộ các bảng này ở nền; cũng có thể bấm **Đồng bộ Data Console** trong Cài đặt.
 - **Backup ngay:** tạo bản sao Google Sheet trong `05_BACKUPS`.
 - **Khôi phục:** luôn tạo thêm bản `BEFORE_RESTORE` trước khi ghi đè dữ liệu hiện tại.
 - **Nhân bản workspace:** Owner có thể tạo mẫu trống, bản sao đầy đủ hoặc snapshot chỉ đọc. Mọi bản sao có workspace ID mới và tắt reminder mặc định.

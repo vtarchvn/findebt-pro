@@ -17,8 +17,15 @@ ADR-001: Google Sheets là datastore để không cần server/database. ADR-002
 
 ## Luồng hiệu năng v2.1
 
-- Bootstrap chỉ đọc snapshot nghiệp vụ cần cho màn hình đầu; health Drive và ghi `TONG_QUAN` chạy sau khi giao diện đã hiện.
+- Bootstrap chỉ đọc snapshot nghiệp vụ cần cho màn hình đầu; health Drive và đồng bộ `01_TỔNG_QUAN`, `02_CÔNG_NỢ`, `00_BẮT_ĐẦU` chạy nền sau khi giao diện đã hiện.
 - `SheetStore` memoize mỗi bảng trong một request, bỏ migration khi schema đã đúng và gom các đợt import thành một lần `setValues` cho mỗi bảng.
 - Cache bootstrap được khóa theo Spreadsheet ID và `DATA_VERSION`; mọi mutation nghiệp vụ tăng phiên bản nên không dùng dữ liệu cũ.
 - Sổ công nợ dùng RPC phân trang, tìm kiếm/lọc/sắp xếp phía máy chủ. Bộ lọc gần nhất được lưu cục bộ trên trình duyệt, không chứa dữ liệu tài chính.
 - Health cache 5 phút và kiểm tra backup, dữ liệu mồ côi, email, trùng đối tượng, Owner và độ lệch giữa quyền Drive với `THANH_VIEN`.
+
+## Google Sheet Console v2.2
+
+- Bảy tab người dùng được đánh số theo luồng: bắt đầu, tổng quan, công nợ, hai bảng nhập, kết quả nhập và danh mục ẩn.
+- Các bảng nghiệp vụ hệ thống vẫn là nguồn dữ liệu chuẩn, được ẩn và bảo vệ cảnh báo; Sheet người dùng chỉ là lớp xem/nhập có kiểm soát.
+- Web App tự đồng bộ snapshot Sheet sau các mutation. Bảng nhập chỉ gửi những dòng đã đánh dấu **Sẵn sàng nhập** và ghi lỗi về `05_KẾT_QUẢ_NHẬP`.
+- Migration schema 3 đổi tên các tab cũ và giữ nguyên dữ liệu đã nhập, không xóa bản ghi tài chính.

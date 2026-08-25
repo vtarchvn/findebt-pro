@@ -13,6 +13,8 @@
 - [x] Wizard tạo/liên kết workspace hiển thị đúng trên mobile
 - [x] Vai trò Owner/Viewer và menu quản trị hiển thị đúng
 - [x] Import có bước preview và chặn commit khi còn lỗi
+- [x] Google Sheet Console schema 3 có 7 tab theo luồng, dropdown/checkbox, màu cảnh báo, bộ lọc và tab kết quả nhập
+- [x] Chỉ nhập dòng Sheet đã đánh dấu và tự đồng bộ snapshot sau mutation
 - [x] Snapshot bị chặn ghi phía server
 - [x] Manifest đặt `executeAs: USER_ACCESSING`
 - [ ] Kiểm tra light mode và tablet trên Apps Script deployment
@@ -20,5 +22,5 @@
 - [x] Skeleton, bootstrap cache, health nền và telemetry đã kiểm tra
 - [x] Phân trang/lọc/sắp xếp công nợ và batch import đã kiểm tra
 - [x] Action center, panel chi tiết, hạn thanh toán thông minh và saved view đã kiểm tra
-- [x] Apps Script production deployment version 5: `AKfycbzPMDvCufvzEEzwXh5gTX6qQLyEYWzxrCzpFdn4LU1HpgivOmlpn-VxZK6dx5T_ln8C`
+- [x] Apps Script production deployment version 6: `AKfycbzPMDvCufvzEEzwXh5gTX6qQLyEYWzxrCzpFdn4LU1HpgivOmlpn-VxZK6dx5T_ln8C`
 - [x] URL production yêu cầu đăng nhập Google và không còn chạy dữ liệu dùng chung dưới danh tính chủ deployment

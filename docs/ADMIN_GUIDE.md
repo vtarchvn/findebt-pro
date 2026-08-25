@@ -91,6 +91,7 @@ Với deployment ổn định, ưu tiên `clasp redeploy` vào deployment ID hi�
 
 - Bootstrap cache tồn tại tối đa 120 giây nhưng khóa theo `DATA_VERSION`; các thao tác ghi nghiệp vụ tự tăng phiên bản và làm snapshot cũ hết hiệu lực.
 - Health workspace cache tối đa 5 phút. Nút **Kiểm tra lại** có thể vẫn dùng kết quả trong cửa sổ này; mutation thành viên hoặc dữ liệu sẽ đổi phiên bản và tạo khóa health mới.
-- `TONG_QUAN` không còn được ghi trên mọi lần mở app. Owner/Admin/Kế toán đồng bộ ở nền sau bootstrap hoặc bấm **Đồng bộ Data Console**.
+- `01_TỔNG_QUAN`, `02_CÔNG_NỢ` và trạng thái tại `00_BẮT_ĐẦU` không chặn lúc mở app. Owner/Admin/Kế toán đồng bộ ở nền sau bootstrap, sau mutation hoặc khi bấm **Đồng bộ Data Console**.
+- Schema 3 tự đổi tên tab staging cũ, tạo các tab người dùng được đánh số, ẩn/bảo vệ bảng hệ thống và giữ nguyên dữ liệu cũ. Không chia sẻ trực tiếp các tab hệ thống; quản lý thành viên từ Web App.
 - Số `bootstrap ms`, trạng thái cache và data version hiển thị trong Dashboard/Cài đặt để hỗ trợ chẩn đoán; không chứa nội dung tài chính trong log trình duyệt.
 - Khi health báo quyền Drive không khớp, chỉ chỉnh thành viên qua FINDEBT để đồng bộ vai trò server và editor/viewer của thư mục gốc.

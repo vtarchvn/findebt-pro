@@ -1,4 +1,5 @@
 import { SheetStore } from '../infrastructure/sheetStore.js';
+import { USER_SHEETS, inputHeaderKey } from '../infrastructure/schema.js';
 import { WorkspaceManager } from '../infrastructure/workspace.js';
 import { FinDebtService } from '../application/findebtService.js';
 import { canAccess, normalizeEmail } from '../domain/access.js';
@@ -117,9 +118,10 @@ function importCsv(entityType, csvText, fileName = 'import.csv') { return commit
 
 function importFromSheet(entityType) {
   return mutatingLocked('ACCOUNTANT', app => {
-    const sheetName = entityType === 'DOI_TUONG' ? 'NHAP_DOI_TUONG' : entityType === 'CHUNG_TU_CONG_NO' ? 'NHAP_CHUNG_TU' : '';
-    if (!sheetName) throw new Error('Loại staging không hợp lệ.'); const sheet = app.store.spreadsheet.getSheetByName(sheetName); const matrix = sheet.getDataRange().getDisplayValues(); if (matrix.length < 2) throw new Error(`Sheet ${sheetName} chưa có dữ liệu.`);
-    const csv = matrix.map(row => row.map(csvCell).join(',')).join('\r\n'); return prepareImport(app, entityType, csv, `${sheetName}.csv`, true);
+    const sheetName = entityType === 'DOI_TUONG' ? USER_SHEETS.PARTNER_INPUT : entityType === 'CHUNG_TU_CONG_NO' ? USER_SHEETS.DOCUMENT_INPUT : '';
+    if (!sheetName) throw new Error('Loại staging không hợp lệ.'); const sheet = app.store.spreadsheet.getSheetByName(sheetName); const matrix = sheet.getDataRange().getValues(); const headerIndex = matrix.findIndex(row => row.map(inputHeaderKey).includes(entityType === 'DOI_TUONG' ? 'Ten_DT' : 'Ma_DT')); if (headerIndex < 0) throw new Error(`Không tìm thấy hàng tiêu đề trong ${sheetName}.`);
+    const headers = matrix[headerIndex].map(inputHeaderKey); const readyIndex = headers.indexOf('San_Sang_Nhap'); let rows = matrix.slice(headerIndex + 1).filter(row => row.some(value => value !== '' && value !== false)); if (readyIndex >= 0) rows = rows.filter(row => row[readyIndex] === true || String(row[readyIndex]).toLowerCase() === 'true'); if (!rows.length) throw new Error(`Chưa có dòng nào được đánh dấu Sẵn sàng nhập trong ${sheetName}.`);
+    const csv = [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n'); return prepareImport(app, entityType, csv, `${sheetName}.csv`, true);
   });
 }
 
@@ -194,12 +196,29 @@ function authorize(store, requiredRole) {
 
 function prepareImport(app, entityType, csvText, fileName, commit) {
   if (!IMPORT_TYPES.includes(entityType)) throw new Error('Loại import không được hỗ trợ.'); if (!csvText || csvText.length > 2_000_000) throw new Error('File CSV trống hoặc vượt giới hạn 2 MB.'); const matrix = Utilities.parseCsv(String(csvText).replace(/^\uFEFF/, '')); if (matrix.length < 2) throw new Error('CSV phải có header và ít nhất một dòng dữ liệu.');
-  const headers = matrix[0].map(value => String(value).trim()); const required = entityType === 'DOI_TUONG' ? ['Ten_DT', 'Phan_Loai'] : ['Ma_DT', 'Loai_Cong_No', 'So_Chung_Tu', 'Ngay_Chung_Tu', 'Han_Thanh_Toan', 'So_Tien_Goc']; const missing = required.filter(field => !headers.includes(field)); if (missing.length) throw new Error(`Thiếu cột bắt buộc: ${missing.join(', ')}`);
+  const headers = matrix[0].map(inputHeaderKey); const required = entityType === 'DOI_TUONG' ? ['Ten_DT', 'Phan_Loai'] : ['Ma_DT', 'Loai_Cong_No', 'So_Chung_Tu', 'Ngay_Chung_Tu', 'Han_Thanh_Toan', 'So_Tien_Goc']; const missing = required.filter(field => !headers.includes(field)); if (missing.length) throw new Error(`Thiếu cột bắt buộc: ${missing.join(', ')}`);
   const existingPartners = app.store.all('DOI_TUONG'); const existingDocs = app.store.all('CHUNG_TU_CONG_NO'); const seen = new Set(); const valid = []; const errors = []; const importKey = `IMP-${Utilities.getUuid().slice(0, 8).toUpperCase()}`;
-  matrix.slice(1).forEach((values, index) => { if (!values.some(value => String(value).trim())) return; const rowNumber = index + 2; const row = Object.fromEntries(headers.map((header, column) => [header, values[column] ?? ''])); try { if (entityType === 'DOI_TUONG') validatePartnerImport(row, existingPartners, seen); else validateDocumentImport(row, existingPartners, existingDocs, seen); valid.push({ rowNumber, row }); } catch (error) { errors.push({ row: rowNumber, message: error.message, data: row }); } });
+  matrix.slice(1).forEach((values, index) => { if (!values.some(value => String(value).trim())) return; const rowNumber = index + 2; const row = normalizeImportRow(Object.fromEntries(headers.map((header, column) => [header, values[column] ?? '']))); try { if (entityType === 'DOI_TUONG') validatePartnerImport(row, existingPartners, seen); else validateDocumentImport(row, existingPartners, existingDocs, seen); valid.push({ rowNumber, row }); } catch (error) { errors.push({ row: rowNumber, message: error.message, data: row }); } });
   if (!commit && errors.length) app.store.insertMany('IMPORT_ERRORS', errors.slice(0, 100).map(error => ({ Import_Key: importKey, Dong: error.row, Loai: entityType, Noi_Dung_Loi: error.message, Du_Lieu_JSON: JSON.stringify(error.data).slice(0, 45000), Created_At: new Date() })));
-  if (commit && errors.length) throw new Error(`Không import vì còn ${errors.length} dòng lỗi. Hãy sửa và kiểm tra lại.`); let success = 0; if (commit) app.store.batch(() => valid.forEach(item => { if (entityType === 'DOI_TUONG') app.savePartner(item.row); else app.createDocument(item.row); success += 1; }));
-  const result = { importKey, fileName: String(fileName).slice(0, 200), total: valid.length + errors.length, valid: valid.length, success, failed: errors.length, errors: errors.slice(0, 100), preview: valid.slice(0, 10).map(item => ({ row: item.rowNumber, data: item.row })), canCommit: errors.length === 0 && valid.length > 0, committed: commit }; if (commit) app.store.insert('IMPORT_LOG', { Ma_Import: importKey, Loai: entityType, Ten_File: result.fileName, Tong_Dong: result.total, Thanh_Cong: success, That_Bai: 0, Chi_Tiet_Loi: '', Nguoi_Dung: app.identity.email, Created_At: new Date() }); return result;
+  let success = 0;
+  const result = { importKey, fileName: String(fileName).slice(0, 200), total: valid.length + errors.length, valid: valid.length, success, failed: errors.length, errors: errors.slice(0, 100), preview: valid.slice(0, 10).map(item => ({ row: item.rowNumber, data: item.row })), canCommit: errors.length === 0 && valid.length > 0, committed: commit };
+  if (commit && errors.length) {
+    writeImportResultSheet(app, entityType, result);
+    throw new Error(`Không import vì còn ${errors.length} dòng lỗi. Xem tab ${USER_SHEETS.IMPORT_RESULTS}, sửa dữ liệu rồi thử lại.`);
+  }
+  if (commit) {
+    app.store.batch(() => valid.forEach(item => { if (entityType === 'DOI_TUONG') app.savePartner(item.row); else app.createDocument(item.row); success += 1; }));
+    result.success = success;
+    app.store.insert('IMPORT_LOG', { Ma_Import: importKey, Loai: entityType, Ten_File: result.fileName, Tong_Dong: result.total, Thanh_Cong: success, That_Bai: 0, Chi_Tiet_Loi: '', Nguoi_Dung: app.identity.email, Created_At: new Date() });
+  }
+  writeImportResultSheet(app, entityType, result); return result;
+}
+
+function normalizeImportRow(row) {
+  const partnerTypes = { 'khách hàng': 'KHACH_HANG', 'nhà cung cấp': 'NHA_CUNG_CAP' }; const debtTypes = { 'phải thu': 'PHAI_THU', 'phải trả': 'PHAI_TRA' };
+  if (row.Phan_Loai) row.Phan_Loai = partnerTypes[normalizeText(row.Phan_Loai)] || String(row.Phan_Loai).trim().toUpperCase();
+  if (row.Loai_Cong_No) row.Loai_Cong_No = debtTypes[normalizeText(row.Loai_Cong_No)] || String(row.Loai_Cong_No).trim().toUpperCase();
+  if (row.Ma_DT) row.Ma_DT = String(row.Ma_DT).split(/\s+[—–-]\s+/)[0].trim(); return row;
 }
 
 function validatePartnerImport(row, existing, seen) {
@@ -219,8 +238,32 @@ function calculateHealth(app) {
 }
 
 function refreshConsole(app, data, health) {
-  const sheet = app.store.spreadsheet.getSheetByName('TONG_QUAN'); if (!sheet) return; const kpis = data.dashboard.kpis; sheet.getRange('A5:H5').setValues([['Giá trị hiện tại', kpis.receivable, kpis.payable, kpis.net, kpis.overdue, data.partners.length, data.documents.filter(row => row.outstanding > 0).length, new Date()]]).setFontWeight('bold'); sheet.getRange('B5:E5').setNumberFormat('#,##0 "₫"'); sheet.getRange('A7:H7').setValues([['Cảnh báo', 'Đối tượng', 'Chứng từ', 'Hạn thanh toán', 'Còn lại', 'Quá hạn (ngày)', 'Trạng thái', 'Điểm sức khỏe']]).setBackground('#dcebf2').setFontWeight('bold').setFontColor('#16324f'); const rows = (data.dashboard.overdue || []).slice(0, 20).map(row => ['Quá hạn', row.Ma_DT, row.So_Chung_Tu, row.Han_Thanh_Toan, row.outstanding, row.daysOverdue, row.status, health.score]); sheet.getRange(8, 1, Math.max(20, rows.length), 8).clearContent(); if (rows.length) { sheet.getRange(8, 1, rows.length, 8).setValues(rows); sheet.getRange(8, 5, rows.length, 1).setNumberFormat('#,##0 "₫"'); }
+  const spreadsheet = app.store.spreadsheet; const overview = spreadsheet.getSheetByName(USER_SHEETS.OVERVIEW); if (!overview) return; const kpis = data.dashboard.kpis; const now = new Date(); const partnerNames = new Map(data.partners.map(row => [row.Ma_DT, row.Ten_DT])); const allDocuments = app.accountingModel(now).summary.rows.slice().sort((a, b) => String(b.Ngay_Chung_Tu).localeCompare(String(a.Ngay_Chung_Tu)));
+  overview.getRange('A5:H5').setValues([['Giá trị hiện tại', kpis.receivable, kpis.payable, kpis.net, kpis.overdue, data.partners.length, allDocuments.filter(row => row.outstanding > 0).length, now]]).setFontWeight('bold'); overview.getRange('B5:E5').setNumberFormat('#,##0 "₫"');
+  const alerts = allDocuments.filter(row => row.outstanding > 0 && row.daysOverdue > 0).sort((a, b) => b.daysOverdue - a.daysOverdue).slice(0, 20).map(row => [row.daysOverdue > 60 ? 'Cao' : 'Trung bình', partnerNames.get(row.Ma_DT) || row.Ma_DT, row.So_Chung_Tu, row.Han_Thanh_Toan, row.outstanding, row.daysOverdue, displayDocumentStatus(row), health.score]); overview.getRange(8, 1, Math.max(20, overview.getLastRow() - 7), 8).clearContent(); if (alerts.length) { overview.getRange(8, 1, alerts.length, 8).setValues(alerts); overview.getRange(8, 5, alerts.length, 1).setNumberFormat('#,##0 "₫"'); }
+  const debtSheet = spreadsheet.getSheetByName(USER_SHEETS.DEBTS); const debtRows = allDocuments.slice(0, 1000).map(row => [row.Ma_CT, row.So_Chung_Tu, partnerNames.get(row.Ma_DT) || row.Ma_DT, row.Loai_Cong_No === 'PHAI_THU' ? 'Phải thu' : 'Phải trả', row.Ngay_Chung_Tu, row.Han_Thanh_Toan, row.originalAmount, row.outstanding, Math.max(0, row.daysOverdue), displayDocumentStatus(row)]); debtSheet.getRange(6, 1, Math.max(1, debtSheet.getLastRow() - 5), 10).clearContent(); if (debtRows.length) debtSheet.getRange(6, 1, debtRows.length, 10).setValues(debtRows);
+  const lookup = spreadsheet.getSheetByName(USER_SHEETS.LOOKUPS); const lookupRows = data.partners.map(row => [`${row.Ma_DT} — ${row.Ten_DT}`, row.Ma_DT, row.Ten_DT]); lookup.getRange(2, 1, Math.max(1, lookup.getLastRow() - 1), 3).clearContent(); if (lookupRows.length) lookup.getRange(2, 1, lookupRows.length, 3).setValues(lookupRows);
+  updateStartSheet(app, health, now); ensureOverviewChart(overview); app.store.setConfig({ LAST_CONSOLE_SYNC_AT: now.toISOString() });
 }
+
+function writeImportResultSheet(app, entityType, result) {
+  const sheet = app.store.spreadsheet.getSheetByName(USER_SHEETS.IMPORT_RESULTS); if (!sheet) return; const now = new Date(); sheet.getRange('A5:F5').setValues([[result.importKey, entityType === 'DOI_TUONG' ? 'Đối tượng' : 'Chứng từ', result.total, result.valid, result.failed, now]]); sheet.getRange('F5').setNumberFormat('dd/mm/yyyy hh:mm'); sheet.getRange('A7:F100').clearContent();
+  const rows = result.errors.length ? result.errors.slice(0, 93).map(error => [error.row, 'Lỗi', error.message, JSON.stringify(error.data).slice(0, 1000), 'Cần sửa', importSuggestion(error.message)]) : [['—', result.committed ? 'Thành công' : 'Hợp lệ', result.committed ? `Đã nhập ${result.success} dòng.` : `${result.valid} dòng đã sẵn sàng để xác nhận.`, '', result.committed ? 'Đã nhập' : 'Chờ xác nhận', result.committed ? 'Dữ liệu đã đồng bộ với Web App.' : 'Quay lại Web App và chọn Xác nhận nhập.']]; sheet.getRange(7, 1, rows.length, 6).setValues(rows);
+}
+
+function updateStartSheet(app, health, syncedAt) {
+  const sheet = app.store.spreadsheet.getSheetByName(USER_SHEETS.START); if (!sheet) return; const config = app.store.config(); const links = [[ScriptApp.getService().getUrl() || '', 'Mở Web App'], [app.workspace.rootFolderUrl, 'Mở thư mục Drive'], [app.workspace.spreadsheetUrl, 'Mở Google Sheet']];
+  links.forEach(([url, label], index) => { const builder = SpreadsheetApp.newRichTextValue().setText(label); if (url) builder.setLinkUrl(url); sheet.getRange(9 + index, 2).setRichTextValue(builder.build()).setFontColor('#0369a1').setFontWeight('bold'); });
+  sheet.getRange('F9:F13').setValues([[config.TEN_DOANH_NGHIEP || 'Doanh nghiệp'], [app.identity.email], [roleDisplay(app.identity.role)], [syncedAt], [`${health.score}/100 — ${health.issues.length ? 'Cần kiểm tra' : 'Ổn định'}`]]); sheet.getRange('F12').setNumberFormat('dd/mm/yyyy hh:mm'); sheet.getRange('F13').setBackground(health.score >= 90 ? '#dcfce7' : health.score >= 70 ? '#fef3c7' : '#fee2e2');
+}
+
+function ensureOverviewChart(sheet) {
+  if (sheet.getCharts().length) return; const chart = sheet.newChart().asColumnChart().addRange(sheet.getRange('B4:E5')).setNumHeaders(1).setPosition(4, 10, 0, 0).setOption('title', 'Cơ cấu công nợ hiện tại').setOption('legend', { position: 'none' }).setOption('colors', ['#0ea5e9']).setOption('backgroundColor', '#ffffff').build(); sheet.insertChart(chart);
+}
+
+function displayDocumentStatus(row) { if (row.outstanding <= 0) return 'Đã thanh toán'; if (row.daysOverdue > 0) return 'Quá hạn'; if (row.outstanding < row.originalAmount) return 'Thanh toán một phần'; return 'Chưa thanh toán'; }
+function roleDisplay(role) { return ({ OWNER: 'Chủ sở hữu', ADMIN: 'Quản trị', ACCOUNTANT: 'Kế toán', VIEWER: 'Chỉ xem' })[role] || 'Chỉ xem'; }
+function importSuggestion(message) { if (/email/i.test(message)) return 'Kiểm tra định dạng ten@congty.vn.'; if (/trùng/i.test(message)) return 'Đổi tên hoặc số chứng từ bị trùng.'; if (/Ma_DT|đối tượng/i.test(message)) return 'Chọn lại đối tượng từ dropdown.'; if (/ngày/i.test(message)) return 'Dùng ngày hợp lệ và kiểm tra hạn thanh toán.'; if (/tiền|So_Tien/i.test(message)) return 'Nhập số nguyên VND lớn hơn 0.'; return 'Sửa dữ liệu theo thông báo rồi kiểm tra lại.'; }
 
 function copyFolderTree(source, target, sourceSpreadsheetId, state = { count: 0, spreadsheetId: '' }) {
   const files = source.getFiles(); while (files.hasNext()) { const file = files.next(); if (file.getName() === 'FINDEBT_MANIFEST.json') continue; state.count += 1; if (state.count > 500) throw new Error('Workspace có hơn 500 tệp. Hãy dùng backup theo Sheet hoặc Google Drive để sao chép thủ công.'); const copy = file.makeCopy(file.getName(), target); if (file.getId() === sourceSpreadsheetId) state.spreadsheetId = copy.getId(); }
