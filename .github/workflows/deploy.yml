@@ -1,0 +1,24 @@
+name: Deploy Apps Script
+on:
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Configure clasp
+        env:
+          CLASP_JSON: ${{ secrets.CLASP_JSON }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          printf '%s' "$CLASP_JSON" > .clasp.json
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+      - run: npx clasp push --force
+      - run: npx clasp deploy --description "GitHub Actions $GITHUB_SHA"
