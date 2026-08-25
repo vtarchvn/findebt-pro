@@ -1,3 +1,1 @@
-**/*
-!dist/**
-
+# `.clasp.json` sets rootDir to dist, so every file inside dist is deployable.
