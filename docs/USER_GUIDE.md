@@ -12,6 +12,8 @@ Tài liệu này dành cho kế toán, chủ doanh nghiệp và người theo d�
 6. Đọc danh sách quyền rồi chọn **Allow / Cho phép**. FINDEBT chạy bằng chính tài khoản đang truy cập và cần Sheets để lưu dữ liệu, Drive để tạo PDF/backup, Mail để gửi nhắc nợ và Script Triggers để chạy lịch tự động.
 7. Chọn **Tạo workspace mới** hoặc dán link thư mục gốc đã được chủ doanh nghiệp chia sẻ. Ứng dụng không tự tạo Sheet trước khi bạn chọn.
 
+Khi tạo mới, giữ trang mở và theo dõi bốn giai đoạn: xác nhận tài khoản, tạo cấu trúc thư mục, tạo Google Sheet Console và hoàn tất quyền Owner. Sau khi đạt 100%, FINDEBT giữ màn hình kết quả để bạn có thể mở thử **thư mục Drive** và **Google Sheet** trước khi chọn **Vào FINDEBT**.
+
 Mỗi workspace nằm trong một thư mục `FINDEBT_PRO — Tên doanh nghiệp`. Người có URL Web App nhưng không có quyền Drive và không có tên trong bảng thành viên sẽ không đọc được dữ liệu của workspace.
 
 Nếu trình duyệt đăng nhập nhiều Google account và hiện “Không tìm thấy trang”, mở URL bằng cửa sổ ẩn danh hoặc Chrome profile chỉ đăng nhập tài khoản cần dùng. Đây là giới hạn chọn profile của Google Apps Script, không phải lỗi mất deployment.

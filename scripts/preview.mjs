@@ -24,6 +24,8 @@ demo.dashboard.overdue = demo.documents.filter(row => row.daysOverdue > 0);
 createServer(async (request, response) => {
   let html = await readFile(new URL('../web/Index.html', import.meta.url), 'utf8');
   html = html.replace('setupNav();renderIcons();', `state=${JSON.stringify(demo)};setupNav();renderIcons();`);
-  html = html.replace("};load();\n</script>", request.url.includes('setup=1') ? "};showSetup({email:'owner@minhan.vn'});\n</script>" : "};render();\n</script>");
+  const mode = new URL(request.url, 'http://127.0.0.1').searchParams.get('setup');
+  const previewCall = mode === '1' ? "showSetup({email:'owner@minhan.vn'});" : mode === 'progress' ? "showSetupProgress('Công ty Kiến trúc VTARC');" : mode === 'success' ? `showWorkspaceSuccess({data:${JSON.stringify(demo)}},false);` : 'render();';
+  html = html.replace("};load();\n</script>", `};${previewCall}\n</script>`);
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); response.end(html);
 }).listen(4173, '127.0.0.1', () => console.log('Preview: http://127.0.0.1:4173'));
