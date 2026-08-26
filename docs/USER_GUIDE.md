@@ -2,7 +2,7 @@
 
 > **Luôn xem bản mới nhất:** [github.com/vtarchvn/findebt-pro/blob/main/docs/USER_GUIDE.md](https://github.com/vtarchvn/findebt-pro/blob/main/docs/USER_GUIDE.md)
 
-> **Phiên bản hình ảnh:** FINDEBT PRO 2.8.1 · deployment `@42` · cập nhật ngày 26/08/2026. Các màn hình dùng dữ liệu mẫu, không chứa dữ liệu tài chính thật.
+> **Phạm vi tài liệu:** đã đối chiếu trực tiếp với FINDEBT PRO 2.8.1 · deployment `@42` ngày 26/08/2026. Chỉ các ảnh còn khớp giao diện hiện tại mới được giữ lại; dữ liệu minh họa không phải dữ liệu tài chính thật.
 
 ## Tác giả và hỗ trợ
 
@@ -47,13 +47,7 @@ Mọi số liệu được tính phía máy chủ. Không nhập trạng thái t
 
 ## 3. Tạo khách hàng hoặc nhà cung cấp
 
-Mở **Đối tượng** để tìm và quản lý khách hàng/NCC.
-
-![Danh sách đối tượng](images/user-guide/02-partners.png)
-
-Chọn **Thêm đối tượng**, sau đó nhập:
-
-![Thêm đối tượng](images/user-guide/03-add-partner.png)
+Mở **Khách hàng & NCC** trên máy tính hoặc **Đối tác** trên điện thoại để tìm và quản lý khách hàng/nhà cung cấp. Chọn **Thêm khách hàng / NCC**, sau đó nhập:
 
 - Tên và phân loại khách hàng/NCC.
 - Số điện thoại, email và địa chỉ.
@@ -65,15 +59,16 @@ Nếu có số dư đầu kỳ, hệ thống tự tạo chứng từ `DAU-KY` đ
 
 ## 4. Tạo chứng từ công nợ
 
-Mở **Công nợ** để xem phải thu và phải trả.
+Mở **Công nợ** để xem Sổ công nợ phải thu và phải trả. Màn hình tải tối đa 40 dòng mỗi lần và có các công cụ:
 
-![Danh sách chứng từ](images/user-guide/04-debts.png)
+- Tìm theo số chứng từ hoặc tên khách hàng/NCC.
+- Lọc **Tất cả**, **Còn nợ**, **Quá hạn** hoặc **Đã trả**.
+- Lọc riêng phải thu/phải trả và sắp xếp theo ngày mới nhất, hạn gần nhất hoặc dư nợ lớn nhất.
+- Chọn một dòng để mở panel chi tiết; từ đây có thể ghi nhận thu/trả tiền hoặc tạo VietQR.
 
 Chọn **Thêm chứng từ**:
 
-![Thêm chứng từ công nợ](images/user-guide/05-add-document.png)
-
-1. Chọn đối tượng.
+1. Chọn khách hàng hoặc nhà cung cấp.
 2. Chọn **Phải thu** cho bán nợ hoặc **Phải trả** cho mua nợ/NCC.
 3. Nhập số chứng từ và số tiền nguyên VND.
 4. Nhập ngày chứng từ và hạn thanh toán.
@@ -83,9 +78,7 @@ Outstanding được tính theo công thức `Tiền gốc − Tổng thanh toá
 
 ## 5. Ghi nhận thu hoặc trả tiền
 
-Từ dòng chứng từ, chọn biểu tượng ví hoặc chọn **Thu tiền nhanh** trên Dashboard.
-
-![Ghi nhận thanh toán](images/user-guide/06-record-payment.png)
+Từ panel chi tiết chứng từ, chọn **Thu / trả tiền**; hoặc chọn **Thu tiền nhanh** trên Dashboard. Trên điện thoại, mở **Thêm → Ghi nhận thu / trả tiền**.
 
 1. Chọn thu tiền hoặc trả tiền NCC.
 2. Nhập ngày, số tiền, phương thức và tham chiếu ngân hàng.
@@ -111,8 +104,6 @@ Nội dung chuyển khoản có dạng `FIN {Mã đối tượng} {Mã chứng t
 
 ## 7. Nhắc nợ và lời hẹn thanh toán
 
-![Nhắc nợ tự động](images/user-guide/07-reminders.png)
-
 Lịch mặc định: T−3, T, T+3, T+7, T+14, T+30, sau đó 7 ngày/lần. Hệ thống kiểm tra lại outstanding ngay trước khi gửi và không gửi nếu:
 
 - Công nợ đã thanh toán đủ.
@@ -130,7 +121,8 @@ Trong giai đoạn nhập dữ liệu thử, để trống email hoặc tắt **
 
 _Trung tâm dữ liệu mới gom mở Google Sheet/Drive, nhập hàng loạt có kiểm tra, backup, nhân bản workspace và xuất phiếu vào cùng một màn hình._
 
-- **PDF công nợ:** chọn đối tượng rồi tạo phiếu snapshot tại thời điểm hiện tại.
+- **Thư đề nghị thanh toán:** dùng để gửi khách hàng, kèm các khoản còn nợ, thông tin ngân hàng và nội dung chuyển khoản.
+- **Biên bản đối chiếu công nợ:** dùng để hai bên xác nhận số liệu và ký tại một thời điểm.
 - **Export CSV:** xuất đối tượng, chứng từ hoặc thanh toán; file có BOM để Excel đọc tiếng Việt.
 - **Import CSV:** chọn loại dữ liệu và file tối đa 2 MB. Bước **Kiểm tra file** chỉ xem trước; chỉ nút **Xác nhận nhập** mới ghi dữ liệu. Nếu một dòng lỗi, cả đợt bị chặn.
 - **Import từ Sheet:** dán hàng loạt vào `03_NHẬP_ĐỐI_TƯỢNG` hoặc `04_NHẬP_CHỨNG_TỪ`, sửa các ô được báo lỗi, đánh dấu cột **Sẵn sàng nhập**, sau đó chọn **Nhập các dòng đã chọn** trên Web App. Kết quả gần nhất nằm tại `05_KẾT_QUẢ_NHẬP`.
@@ -155,19 +147,17 @@ Không khôi phục backup khi người khác đang nhập giao dịch. Nên th�
 
 Mở **Cài đặt** để xem hồ sơ phát hành chứng từ, trạng thái workspace, thành viên và danh sách tài khoản VietQR. Owner hoặc Quản trị có thể chọn **Sửa hồ sơ** để cập nhật logo, tên doanh nghiệp, mã số thuế, địa chỉ, email kế toán, website và người đại diện; thông tin mới được áp dụng cho các PDF tạo sau đó.
 
-![Cài đặt hệ thống](images/user-guide/09-settings.png)
+Trong **Kiểm tra thông minh**:
 
-Chọn **Thêm tài khoản**:
+- **Kiểm tra lại** quét quyền Drive, backup và chất lượng dữ liệu.
+- **Đồng bộ Data Console** cập nhật ngay các tab tổng quan/công nợ trong Google Sheet.
+- **Tạo dữ liệu mẫu** chỉ xuất hiện với Owner và không nhân đôi nếu chạy lại.
 
-![Thêm tài khoản ngân hàng](images/user-guide/09b-bank-account.png)
+Trong **Tài khoản VietQR**, chọn **Thêm tài khoản**.
 
 Nhập mã ngân hàng, số tài khoản, tên chủ tài khoản và tên hiển thị. Đánh dấu **Mặc định** cho tài khoản dùng khi chứng từ không chỉ định tài khoản riêng. Hãy quét thử QR với số tiền nhỏ trước khi sử dụng thực tế.
 
 ## 10. Sử dụng trên điện thoại
-
-![Dashboard mobile](images/user-guide/10-mobile-dashboard.png)
-
-_Dashboard mobile giữ KPI, tuổi nợ, kiểm soát workspace và hành động chính trong một cột. Ảnh minh họa được chụp ở giai đoạn hoàn thiện; từ bản 2.8.0, nhãn **Khách hàng & NCC** trên thanh dưới đã được rút gọn thành **Đối tác** và nút cuối là **Thêm**._
 
 Điện thoại có thanh điều hướng cố định gồm **Tổng quan**, **Đối tác**, **Công nợ**, **Nhắc nợ** và **Thêm**. Mục đang xem có màu và vạch chỉ báo riêng. Nhấn **Thêm** để mở bảng chức năng:
 
@@ -175,6 +165,14 @@ _Dashboard mobile giữ KPI, tuổi nợ, kiểm soát workspace và hành độ
 - **Báo cáo & dữ liệu** mở PDF, nhập hàng loạt, CSV và backup.
 - **Cài đặt workspace** mở hồ sơ doanh nghiệp, thành viên và tài khoản ngân hàng.
 - **Hỗ trợ & hướng dẫn** mở tài liệu chính thức, thông tin liên hệ và tác giả.
+
+| Thanh điều hướng | Bảng “Thêm” |
+| --- | --- |
+| Tổng quan | Ghi nhận thu / trả tiền |
+| Đối tác | Báo cáo & dữ liệu |
+| Công nợ | Cài đặt workspace |
+| Nhắc nợ | Hỗ trợ & hướng dẫn |
+| Thêm | Hiển thị workspace và vai trò hiện tại |
 
 Bảng chức năng có thể đóng bằng nút ×, chạm vùng nền hoặc phím Esc. Các nút có vùng chạm tối thiểu phù hợp cho thao tác một tay và tôn trọng vùng an toàn ở cạnh dưới màn hình.
 
@@ -216,7 +214,7 @@ Khi lưu, FINDEBT đồng thời chia sẻ thư mục Drive. Người nhận m�
 
 Xem thêm [Hướng dẫn quản trị triển khai](ADMIN_GUIDE.md) và [Quy tắc thanh toán](PAYMENTS.md).
 
-## 14. Giao diện nhanh và sổ công nợ mới
+## 14. Giao diện nhanh và Sổ công nợ
 
 - Khi mở app, skeleton xuất hiện ngay; kiểm tra Drive, backup và Data Console tiếp tục ở nền nên không cần chờ mới thao tác.
 - Khối **Hành động chính** trên Dashboard ưu tiên ghi nhận thu/trả tiền; thêm chứng từ, xử lý quá hạn và nhập hàng loạt là các lối tắt phụ.

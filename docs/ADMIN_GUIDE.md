@@ -33,7 +33,7 @@ Trong **Deploy → Manage deployments**, kiểm tra:
 - Execute as: **User accessing the web app**.
 - Access: bất cứ ai có Google Account, hoặc giới hạn domain theo chính sách doanh nghiệp.
 
-![Deployment production](images/user-guide/12-production-deployment.png)
+Trước khi deploy, kiểm tra Apps Script project có đủ năm file build: `appsscript.json`, `Bundle.js`, `Client.html`, `Code.gs` và `Index.html`. Deployment production hiện tại của dự án mẫu là `@42`; khi cập nhật phải giữ nguyên deployment ID để người dùng không phải đổi URL.
 
 URL production:
 
@@ -43,7 +43,7 @@ Tuyệt đối không chọn **User deploying** cho production nhiều người.
 
 ## 5. Khởi tạo datastore
 
-Mở Web App và chọn **Tạo workspace mới**. FINDEBT tạo một thư mục gốc, cây thư mục đánh số, Google Sheet Data Console, schema version 2, manifest và User Properties liên kết. Với datastore version 1, lần mở đầu của chủ dữ liệu tái sử dụng thư mục `FINDEBT_PRO`, chuyển nội dung `BACKUPS`/`REPORTS` vào nhánh mới và chuyển Sheet vào `01_DATA`; dữ liệu tài chính không bị xóa.
+Mở Web App và chọn **Tạo workspace mới**. FINDEBT tạo một thư mục gốc, cây thư mục đánh số, Google Sheet Data Console, schema version 4, manifest và User Properties liên kết. Khi gặp workspace cấu trúc cũ, lần mở đầu của chủ dữ liệu sẽ tái sử dụng thư mục `FINDEBT_PRO`, chuyển nội dung `BACKUPS`/`REPORTS` vào nhánh mới và chuyển Sheet vào `01_DATA`; dữ liệu tài chính không bị xóa.
 
 Không đổi tên hoặc di chuyển riêng Sheet ra khỏi thư mục gốc. Nếu User Properties bị mất, dùng **Liên kết workspace** với link thư mục gốc để phục hồi con trỏ từ manifest.
 
@@ -62,9 +62,9 @@ Theo dõi tỷ lệ lỗi trong trang **Triggers** và chi tiết lỗi trong **
 
 ```powershell
 npm run check
-npm run build
-npx clasp push
-npx clasp create-deployment --description "FINDEBT PRO release"
+npm run push
+npx clasp deploy -i AKfycbzPMDvCufvzEEzwXh5gTX6qQLyEYWzxrCzpFdn4LU1HpgivOmlpn-VxZK6dx5T_ln8C -d "FINDEBT PRO release"
+npm run smoke:production
 ```
 
 Với deployment ổn định, ưu tiên `clasp redeploy` vào deployment ID hiện tại để URL không đổi. Trước mỗi release:
@@ -92,6 +92,6 @@ Với deployment ổn định, ưu tiên `clasp redeploy` vào deployment ID hi�
 - Bootstrap cache tồn tại tối đa 120 giây nhưng khóa theo `DATA_VERSION`; các thao tác ghi nghiệp vụ tự tăng phiên bản và làm snapshot cũ hết hiệu lực.
 - Health workspace cache tối đa 5 phút. Nút **Kiểm tra lại** có thể vẫn dùng kết quả trong cửa sổ này; mutation thành viên hoặc dữ liệu sẽ đổi phiên bản và tạo khóa health mới.
 - `01_TỔNG_QUAN`, `02_CÔNG_NỢ` và trạng thái tại `00_BẮT_ĐẦU` không chặn lúc mở app. Owner/Admin/Kế toán đồng bộ ở nền sau bootstrap, sau mutation hoặc khi bấm **Đồng bộ Data Console**.
-- Schema 3 tự đổi tên tab staging cũ, tạo các tab người dùng được đánh số, ẩn/bảo vệ bảng hệ thống và giữ nguyên dữ liệu cũ. Không chia sẻ trực tiếp các tab hệ thống; quản lý thành viên từ Web App.
+- Schema 4 tự đổi tên tab staging cũ, tạo các tab người dùng được đánh số, bổ sung hồ sơ doanh nghiệp/logo, ẩn hoặc bảo vệ bảng hệ thống và giữ nguyên dữ liệu cũ. Không chia sẻ trực tiếp các tab hệ thống; quản lý thành viên từ Web App.
 - Số `bootstrap ms`, trạng thái cache và data version hiển thị trong Dashboard/Cài đặt để hỗ trợ chẩn đoán; không chứa nội dung tài chính trong log trình duyệt.
 - Khi health báo quyền Drive không khớp, chỉ chỉnh thành viên qua FINDEBT để đồng bộ vai trò server và editor/viewer của thư mục gốc.
