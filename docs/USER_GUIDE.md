@@ -2,6 +2,8 @@
 
 > **Luôn xem bản mới nhất:** [github.com/vtarchvn/findebt-pro/blob/main/docs/USER_GUIDE.md](https://github.com/vtarchvn/findebt-pro/blob/main/docs/USER_GUIDE.md)
 
+> **Phiên bản hình ảnh:** FINDEBT PRO 2.8.1 · deployment `@42` · cập nhật ngày 26/08/2026. Các màn hình dùng dữ liệu mẫu, không chứa dữ liệu tài chính thật.
+
 ## Tác giả và hỗ trợ
 
 Mở `Tác giả & hỗ trợ` ở thanh điều hướng máy tính hoặc chọn `Thêm → Hỗ trợ & hướng dẫn` trên điện thoại. Nút **Mở hướng dẫn sử dụng** dẫn thẳng tới bản tài liệu mới nhất trên GitHub; cùng trang này còn có email, website, mã nguồn và phiên bản đang dùng. Nếu muốn mời tác giả một ly cà phê, quét VietQR hoặc sao chép số tài khoản Techcombank hiển thị ngay trong tab; QR không đặt trước số tiền.
@@ -27,6 +29,8 @@ Nếu trình duyệt đăng nhập nhiều Google account và hiện “Không t
 ## 2. Đọc Dashboard
 
 ![Dashboard FINDEBT PRO](images/user-guide/01-dashboard.png)
+
+_Dashboard mới có dải kiểm tra sức khỏe workspace, nhóm hành động nhanh, bốn KPI chính, biểu đồ tuổi nợ và danh sách quá hạn ưu tiên. Logo VTARCH ở thanh bên là nhận diện mới của ứng dụng._
 
 Dashboard hiển thị:
 
@@ -124,6 +128,8 @@ Trong giai đoạn nhập dữ liệu thử, để trống email hoặc tắt **
 
 ![Báo cáo và dữ liệu](images/user-guide/08-reports.png)
 
+_Trung tâm dữ liệu mới gom mở Google Sheet/Drive, nhập hàng loạt có kiểm tra, backup, nhân bản workspace và xuất phiếu vào cùng một màn hình._
+
 - **PDF công nợ:** chọn đối tượng rồi tạo phiếu snapshot tại thời điểm hiện tại.
 - **Export CSV:** xuất đối tượng, chứng từ hoặc thanh toán; file có BOM để Excel đọc tiếng Việt.
 - **Import CSV:** chọn loại dữ liệu và file tối đa 2 MB. Bước **Kiểm tra file** chỉ xem trước; chỉ nút **Xác nhận nhập** mới ghi dữ liệu. Nếu một dòng lỗi, cả đợt bị chặn.
@@ -133,11 +139,21 @@ Trong giai đoạn nhập dữ liệu thử, để trống email hoặc tắt **
 - **Khôi phục:** luôn tạo thêm bản `BEFORE_RESTORE` trước khi ghi đè dữ liệu hiện tại.
 - **Nhân bản workspace:** Owner có thể tạo mẫu trống, bản sao đầy đủ hoặc snapshot chỉ đọc. Mọi bản sao có workspace ID mới và tắt reminder mặc định.
 
+Hai loại tài liệu PDF hiện được trình bày riêng theo đúng mục đích sử dụng:
+
+![Thư đề nghị thanh toán](images/user-guide/08a-payment-notice.png)
+
+_**Thư đề nghị thanh toán** dùng để gửi khách hàng: nêu khoản quá hạn, tổng tiền cần thanh toán, thông tin ngân hàng và nội dung chuyển khoản._
+
+![Biên bản đối chiếu công nợ](images/user-guide/08b-reconciliation.png)
+
+_**Biên bản đối chiếu công nợ** dùng để hai bên xác nhận số liệu tại một thời điểm, có khu vực đại diện hai doanh nghiệp ký và ghi rõ họ tên._
+
 Không khôi phục backup khi người khác đang nhập giao dịch. Nên thực hiện ngoài giờ và kiểm tra lại tổng phải thu/phải trả ngay sau restore.
 
 ## 9. Cấu hình tài khoản ngân hàng
 
-Mở **Cài đặt** để xem trạng thái doanh nghiệp và danh sách tài khoản VietQR.
+Mở **Cài đặt** để xem hồ sơ phát hành chứng từ, trạng thái workspace, thành viên và danh sách tài khoản VietQR. Owner hoặc Quản trị có thể chọn **Sửa hồ sơ** để cập nhật logo, tên doanh nghiệp, mã số thuế, địa chỉ, email kế toán, website và người đại diện; thông tin mới được áp dụng cho các PDF tạo sau đó.
 
 ![Cài đặt hệ thống](images/user-guide/09-settings.png)
 
@@ -150,6 +166,8 @@ Nhập mã ngân hàng, số tài khoản, tên chủ tài khoản và tên hi�
 ## 10. Sử dụng trên điện thoại
 
 ![Dashboard mobile](images/user-guide/10-mobile-dashboard.png)
+
+_Dashboard mobile giữ KPI, tuổi nợ, kiểm soát workspace và hành động chính trong một cột. Ảnh minh họa được chụp ở giai đoạn hoàn thiện; từ bản 2.8.0, nhãn **Khách hàng & NCC** trên thanh dưới đã được rút gọn thành **Đối tác** và nút cuối là **Thêm**._
 
 Điện thoại có thanh điều hướng cố định gồm **Tổng quan**, **Đối tác**, **Công nợ**, **Nhắc nợ** và **Thêm**. Mục đang xem có màu và vạch chỉ báo riêng. Nhấn **Thêm** để mở bảng chức năng:
 
