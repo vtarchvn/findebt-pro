@@ -1,14 +1,21 @@
 import { SCHEMA_VERSION, TABLES, migrateSpreadsheet } from './schema.js';
 
+const CIVIL_DATE_FIELDS = new Set(['Ngay_Chung_Tu', 'Han_Thanh_Toan', 'Ngay_Thanh_Toan', 'Ngay_Du_Kien', 'Ngay_Hen']);
+
 export class SheetStore {
   constructor(spreadsheet) { this.spreadsheet = spreadsheet; this.cache = new Map(); this.pending = null; }
 
-  migrate() {
+  needsMigration() {
     const config = this.spreadsheet.getSheetByName('CONFIG');
     if (config && config.getLastRow() > 1) {
       const rows = config.getRange(2, 1, config.getLastRow() - 1, 2).getValues();
       if (Number(rows.find(row => row[0] === 'SCHEMA_VERSION')?.[1]) >= SCHEMA_VERSION) return false;
     }
+    return true;
+  }
+
+  migrate() {
+    if (!this.needsMigration()) return false;
     migrateSpreadsheet(this.spreadsheet); this.cache.clear(); return true;
   }
 
@@ -17,7 +24,7 @@ export class SheetStore {
     const sheet = this.sheet(table); const lastRow = sheet.getLastRow();
     if (lastRow < 2) { this.cache.set(table, []); return this.cache.get(table); }
     const headers = TABLES[table];
-    const rows = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues().map(row => Object.fromEntries(headers.map((h, i) => [h, serializeCell(row[i])])));
+    const rows = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues().map(row => Object.fromEntries(headers.map((h, i) => [h, serializeCell(row[i], h)])));
     this.cache.set(table, rows); return rows;
   }
 
@@ -70,4 +77,8 @@ export class SheetStore {
   sheet(table) { const sheet = this.spreadsheet.getSheetByName(table); if (!sheet) throw new Error(`Thiếu sheet ${table}`); return sheet; }
 }
 
-function serializeCell(value) { return value instanceof Date ? value.toISOString() : value; }
+function serializeCell(value, field) {
+  if (!(value instanceof Date)) return value;
+  if (CIVIL_DATE_FIELDS.has(field)) return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+  return value.toISOString();
+}

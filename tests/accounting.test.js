@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AGING_BUCKETS, DOC_STATUS, DOC_TYPES, agingBucket, creditLimitCheck, documentState, shouldSendReminder, summarize, validateAllocation, vietQrUrl } from '../src/domain/accounting.js';
+import { AGING_BUCKETS, DOC_STATUS, DOC_TYPES, agingBucket, civilDateKey, creditLimitCheck, documentState, shouldSendReminder, summarize, validateAllocation, vietQrUrl } from '../src/domain/accounting.js';
 
 const today = new Date('2026-08-25T00:00:00Z');
 const invoice = { id: 'INV001', partnerId: 'KH001', type: DOC_TYPES.RECEIVABLE, originalAmount: 100_000_000, dueDate: '2026-07-11' };
@@ -35,6 +35,11 @@ describe('allocation and safeguards', () => {
     expect(() => documentState({ ...invoice, originalAmount: 1.2 }, [], [], today)).toThrow('số nguyên VND');
   });
 
+  it('rejects money that is not fully allocated', () => {
+    const docs = new Map([['A', { id: 'A', partnerId: 'P', type: DOC_TYPES.RECEIVABLE }]]);
+    expect(() => validateAllocation({ partnerId: 'P', type: DOC_TYPES.RECEIVABLE, amount: 100 }, [{ documentId: 'A', amount: 90 }], docs)).toThrow('Toàn bộ');
+  });
+
   it('voids payment effect without hard delete', () => {
     const state = documentState({ ...invoice, originalAmount: 100 }, [{ paymentId: 'P1', documentId: 'INV001', amount: 100 }], [{ id: 'P1', voided: true }], today);
     expect(state.outstanding).toBe(100);
@@ -42,6 +47,10 @@ describe('allocation and safeguards', () => {
 });
 
 describe('aging, credit and reminder rules', () => {
+  it('keeps civil dates stable without UTC conversion', () => {
+    expect(civilDateKey('2026-08-25T17:00:00.000Z')).toBe('2026-08-25');
+    expect(civilDateKey(new Date(2026, 7, 26, 0, 5))).toBe('2026-08-26');
+  });
   it.each([['2026-08-25', AGING_BUCKETS.CURRENT], ['2026-08-24', AGING_BUCKETS.D1_30], ['2026-07-11', AGING_BUCKETS.D31_60], ['2026-06-01', AGING_BUCKETS.D60_PLUS]])('buckets %s', (date, bucket) => expect(agingBucket(date, today)).toBe(bucket));
   it('detects exceeded credit', () => expect(creditLimitCheck(80, 30, 100)).toMatchObject({ projectedDebt: 110, exceededBy: 10, exceeded: true }));
   it('prevents duplicate reminders and pauses for promise-to-pay', () => {

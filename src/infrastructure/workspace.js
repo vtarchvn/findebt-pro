@@ -24,6 +24,17 @@ export class WorkspaceManager {
     this.uuid = deps.uuid || (() => Utilities.getUuid());
   }
 
+  session() {
+    const spreadsheetId = this.props.getProperty(PROP.spreadsheet) || '';
+    return {
+      connected: Boolean(spreadsheetId),
+      email: this.requireEmail(),
+      workspaceId: this.props.getProperty(PROP.workspace) || '',
+      spreadsheetId,
+      rootFolderId: this.props.getProperty(PROP.root) || ''
+    };
+  }
+
   context({ migrateLegacy = false } = {}) {
     const spreadsheetId = this.props.getProperty(PROP.spreadsheet);
     if (!spreadsheetId) return { connected: false, email: this.requireEmail() };

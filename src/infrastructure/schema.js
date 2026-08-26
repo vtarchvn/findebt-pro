@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const USER_SHEETS = Object.freeze({
   START: '00_BẮT_ĐẦU', OVERVIEW: '01_TỔNG_QUAN', DEBTS: '02_CÔNG_NỢ',
@@ -31,6 +31,8 @@ const HEADER_LABELS = Object.freeze({ Ten_DT: 'Tên đối tượng *', Phan_Loa
 export function inputHeaderKey(value) { const text = String(value || '').trim(); return Object.keys(HEADER_LABELS).find(key => key === text || HEADER_LABELS[key] === text) || text; }
 
 export function migrateSpreadsheet(spreadsheet) {
+  const currentVersion = readSchemaVersion(spreadsheet);
+  if (currentVersion === 3) { migrateV3ToV4(spreadsheet); return; }
   renameLegacySheet(spreadsheet, 'TONG_QUAN', USER_SHEETS.OVERVIEW);
   renameLegacySheet(spreadsheet, 'NHAP_DOI_TUONG', USER_SHEETS.PARTNER_INPUT);
   renameLegacySheet(spreadsheet, 'NHAP_CHUNG_TU', USER_SHEETS.DOCUMENT_INPUT);
@@ -41,13 +43,18 @@ export function migrateSpreadsheet(spreadsheet) {
   ensureImportResultsSheet(spreadsheet); orderAndSecureSheets(spreadsheet); updateSchemaVersion(spreadsheet);
 }
 
+function readSchemaVersion(spreadsheet) { const config = spreadsheet.getSheetByName('CONFIG'); if (!config || config.getLastRow() < 2) return 0; const rows = config.getRange(2, 1, config.getLastRow() - 1, 2).getValues(); return Number(rows.find(row => row[0] === 'SCHEMA_VERSION')?.[1] || 0); }
+function migrateV3ToV4(spreadsheet) { const sheet = spreadsheet.getSheetByName('TAI_KHOAN_NGAN_HANG'); if (!sheet) throw new Error('Workspace thiếu bảng tài khoản ngân hàng. Hãy chạy kiểm tra cấu trúc trước khi nâng cấp.'); const column = TABLES.TAI_KHOAN_NGAN_HANG.indexOf('So_Tai_Khoan') + 1; sheet.getRange(2, column, Math.max(1, sheet.getMaxRows() - 1), 1).setNumberFormat('@'); updateSchemaVersion(spreadsheet); }
+
 function renameLegacySheet(spreadsheet, oldName, newName) { const legacy = spreadsheet.getSheetByName(oldName); if (legacy && !spreadsheet.getSheetByName(newName)) legacy.setName(newName); }
 
 function ensureSystemSheet(spreadsheet, name, headers) {
   const sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name); const existing = sheet.getLastColumn() ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
   if (!existing.some(Boolean)) sheet.getRange(1, 1, 1, headers.length).setValues([headers]); else { const missing = headers.filter(header => !existing.includes(header)); if (missing.length) sheet.getRange(1, existing.length + 1, 1, missing.length).setValues([missing]); }
   sheet.setFrozenRows(1); sheet.setHiddenGridlines(true); sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground(COLORS.gray).setFontColor(COLORS.text).setWrap(true);
-  headers.forEach((header, index) => sheet.setColumnWidth(index + 1, /Tien|Du_No|Han_Muc/.test(header) ? 135 : /Email|Dia_Chi|Ghi_Chu|Noi_Dung|JSON|Loi/.test(header) ? 220 : 120)); ensureWarningProtection(sheet, 'FINDEBT: bảng hệ thống — hãy thao tác qua Web App');
+  headers.forEach((header, index) => sheet.setColumnWidth(index + 1, /Tien|Du_No|Han_Muc/.test(header) ? 135 : /Email|Dia_Chi|Ghi_Chu|Noi_Dung|JSON|Loi/.test(header) ? 220 : 120));
+  if (name === 'TAI_KHOAN_NGAN_HANG') sheet.getRange(2, headers.indexOf('So_Tai_Khoan') + 1, Math.max(1, sheet.getMaxRows() - 1), 1).setNumberFormat('@');
+  ensureWarningProtection(sheet, 'FINDEBT: bảng hệ thống — hãy thao tác qua Web App');
 }
 
 function ensureStartSheet(spreadsheet) {

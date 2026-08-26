@@ -79,4 +79,13 @@ describe('schema migration against the Apps Script surface', () => {
     expect(input.values[5]?.[0]).toBe('Công ty mẫu');
     expect(input.rangeProtections).toHaveLength(2);
   });
+
+  it('uses the lightweight v3 to v4 migration without rebuilding user sheets', () => {
+    const spreadsheet = new FakeSpreadsheet();
+    spreadsheet.insertSheet('CONFIG').getRange(1, 1, 2, 3).setValues([['Khoa', 'Gia_Tri', 'Updated_At'], ['SCHEMA_VERSION', 3, '']]);
+    spreadsheet.insertSheet('TAI_KHOAN_NGAN_HANG').getRange(1, 1, 1, 9).setValues([['Ma_TK', 'Ma_Ngan_Hang', 'So_Tai_Khoan', 'Ten_Chu_Tai_Khoan', 'Ten_Hien_Thi', 'Mac_Dinh', 'Trang_Thai', 'Created_At', 'Updated_At']]);
+    migrateSpreadsheet(spreadsheet);
+    expect(spreadsheet.getSheetByName(USER_SHEETS.START)).toBeNull();
+    expect(spreadsheet.getSheetByName('CONFIG').values.some(row => row?.[0] === 'SCHEMA_VERSION' && row?.[1] === SCHEMA_VERSION)).toBe(true);
+  });
 });

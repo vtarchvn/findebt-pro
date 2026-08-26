@@ -2,6 +2,8 @@
 
 Quản trị công nợ phải thu/phải trả miễn phí cho doanh nghiệp Việt Nam, vận hành hoàn toàn trên Google Apps Script, Google Sheets và Google Drive.
 
+**Bắt đầu tại đây:** [Hướng dẫn sử dụng có hình minh họa](docs/USER_GUIDE.md) · [Hướng dẫn quản trị triển khai](docs/ADMIN_GUIDE.md) · [Bản FINDEBT PRO đang chạy](https://script.google.com/macros/s/AKfycbzPMDvCufvzEEzwXh5gTX6qQLyEYWzxrCzpFdn4LU1HpgivOmlpn-VxZK6dx5T_ln8C/exec)
+
 ## Tính năng
 
 - Khách hàng/nhà cung cấp, chứng từ AR/AP, thu–trả và phân bổ nhiều-nhiều.
@@ -11,7 +13,7 @@ Quản trị công nợ phải thu/phải trả miễn phí cho doanh nghiệp V
 - Workspace riêng theo tài khoản Google; wizard tạo mới hoặc liên kết thư mục Drive đã được chia sẻ.
 - Google Sheet Data Console, staging nhập hàng loạt, phân quyền Owner/Admin/Kế toán/Viewer.
 - Nhân bản mẫu trống, bản sao đầy đủ hoặc snapshot chỉ đọc; kiểm tra sức khỏe dữ liệu và backup.
-- Dark/light mode; giao diện riêng cho desktop, tablet và mobile.
+- Dark/light mode; giao diện riêng cho desktop, tablet và mobile, với thanh điều hướng dưới và bảng chức năng tối ưu cho thao tác một tay.
 
 ## Triển khai lần đầu
 

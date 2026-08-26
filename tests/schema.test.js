@@ -3,7 +3,7 @@ import { SCHEMA_VERSION, USER_SHEETS, inputHeaderKey } from '../src/infrastructu
 
 describe('Google Sheets console schema', () => {
   it('uses ordered, human-readable workspace tabs', () => {
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
     expect(Object.values(USER_SHEETS)).toEqual([
       '00_BẮT_ĐẦU',
       '01_TỔNG_QUAN',

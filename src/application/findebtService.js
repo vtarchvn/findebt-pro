@@ -1,4 +1,4 @@
-import { DOC_TYPES, creditLimitCheck, documentState, shouldSendReminder, summarize, validateAllocation, vietQrUrl } from '../domain/accounting.js';
+import { DOC_TYPES, civilDateKey, creditLimitCheck, documentState, shouldSendReminder, summarize, toDay, validateAllocation, vietQrUrl } from '../domain/accounting.js';
 
 const ID_FIELDS = { DOI_TUONG: 'Ma_DT', CHUNG_TU_CONG_NO: 'Ma_CT', THANH_TOAN: 'Ma_TT', PHAN_BO_THANH_TOAN: 'Ma_PB', NHAC_NO: 'Ma_Nhac', HEN_THANH_TOAN: 'Ma_Hen', TAI_KHOAN_NGAN_HANG: 'Ma_TK' };
 
@@ -22,6 +22,8 @@ export class FinDebtService {
   savePartner(input) {
     requireText(input.Ten_DT, 'Tên đối tượng');
     if (!['KHACH_HANG', 'NHA_CUNG_CAP'].includes(input.Phan_Loai)) throw new Error('Phân loại không hợp lệ');
+    const duplicate = this.store.all('DOI_TUONG').find(row => row.Trang_Thai !== 'DA_HUY' && row.Phan_Loai === input.Phan_Loai && normalizeText(row.Ten_DT) === normalizeText(input.Ten_DT) && row.Ma_DT !== input.Ma_DT);
+    if (duplicate) throw new Error('Khách hàng hoặc nhà cung cấp đã tồn tại với cùng tên và phân loại');
     const now = new Date(); const record = { ...input, Ma_DT: input.Ma_DT || this.deps.id(input.Phan_Loai === 'KHACH_HANG' ? 'KH' : 'NCC'), Han_Muc_Tin_Dung: money(input.Han_Muc_Tin_Dung), Du_No_Dau_Ky: money(input.Du_No_Dau_Ky), Thoi_Han_No_Chuan: integer(input.Thoi_Han_No_Chuan || 30), Cho_Phep_Nhac_No: input.Cho_Phep_Nhac_No !== false, Kenh_Nhac_No: input.Kenh_Nhac_No || 'EMAIL', Nhac_Truoc_Han: integer(input.Nhac_Truoc_Han ?? 3), Chu_Ky_Nhac_Qua_Han: integer(input.Chu_Ky_Nhac_Qua_Han ?? 7), Trang_Thai: 'HOAT_DONG', Created_At: now, Updated_At: now };
     this.store.insert('DOI_TUONG', record);
     if (record.Du_No_Dau_Ky > 0) {
@@ -62,18 +64,38 @@ export class FinDebtService {
 
   voidRecord(table, id) {
     if (!['CHUNG_TU_CONG_NO', 'THANH_TOAN'].includes(table)) throw new Error('Không thể hủy loại dữ liệu này');
+    const idField = ID_FIELDS[table]; const current = this.store.all(table).find(row => String(row[idField]) === String(id));
+    if (!current) throw new Error(`Không tìm thấy ${id}`);
+    if (current.Trang_Thai_Ban_Ghi === 'DA_HUY') throw new Error('Giao dịch này đã được hủy trước đó');
+    if (table === 'CHUNG_TU_CONG_NO') {
+      const activePaymentIds = new Set(this.store.all('THANH_TOAN').filter(row => row.Trang_Thai_Ban_Ghi !== 'DA_HUY').map(row => row.Ma_TT));
+      const hasActiveAllocation = this.store.all('PHAN_BO_THANH_TOAN').some(row => row.Ma_CT === id && row.Trang_Thai_Ban_Ghi !== 'DA_HUY' && activePaymentIds.has(row.Ma_TT));
+      if (hasActiveAllocation) throw new Error('Không thể hủy chứng từ đã có thanh toán. Hãy hủy thanh toán liên quan trước.');
+    }
     const result = this.store.update(table, ID_FIELDS[table], id, { Trang_Thai_Ban_Ghi: 'DA_HUY', Updated_At: new Date() });
     this.audit('HUY_GIAO_DICH', table, id, result.before, result.after); return result.after;
   }
 
   savePromise(input) {
-    const record = { Ma_Hen: this.deps.id('HEN'), Ma_DT: requireText(input.Ma_DT, 'Đối tượng'), Ma_CT: clean(input.Ma_CT), Ngay_Hen: validDate(input.Ngay_Hen), So_Tien_Hen: moneyPositive(input.So_Tien_Hen), Ghi_Chu: clean(input.Ghi_Chu), Trang_Thai: 'DANG_HEN', Created_At: new Date(), Updated_At: new Date() };
+    const partnerId = requireText(input.Ma_DT, 'Khách hàng'); const documentId = clean(input.Ma_CT); const promiseDate = validDate(input.Ngay_Hen); const amount = moneyPositive(input.So_Tien_Hen);
+    if (!this.store.all('DOI_TUONG').some(row => row.Ma_DT === partnerId && row.Trang_Thai !== 'DA_HUY')) throw new Error('Khách hàng hoặc nhà cung cấp không tồn tại');
+    if (toDay(promiseDate) < toDay(new Date())) throw new Error('Ngày hẹn không được nằm trong quá khứ');
+    if (documentId) {
+      const document = this.accountingModel(new Date()).summary.rows.find(row => row.Ma_CT === documentId && !row.voided);
+      if (!document || document.Ma_DT !== partnerId) throw new Error('Chứng từ không thuộc khách hàng hoặc nhà cung cấp đã chọn');
+      if (amount > document.outstanding) throw new Error('Số tiền hẹn vượt số công nợ còn lại của chứng từ');
+    }
+    const record = { Ma_Hen: this.deps.id('HEN'), Ma_DT: partnerId, Ma_CT: documentId, Ngay_Hen: promiseDate, So_Tien_Hen: amount, Ghi_Chu: clean(input.Ghi_Chu), Trang_Thai: 'DANG_HEN', Created_At: new Date(), Updated_At: new Date() };
     this.store.insert('HEN_THANH_TOAN', record); this.audit('TAO_LICH_HEN', 'HEN_THANH_TOAN', record.Ma_Hen, null, record); return record;
   }
 
   saveBankAccount(input) {
     ['Ma_Ngan_Hang', 'So_Tai_Khoan', 'Ten_Chu_Tai_Khoan'].forEach(field => requireText(input[field], field));
-    const record = { Ma_TK: this.deps.id('NH'), Ma_Ngan_Hang: clean(input.Ma_Ngan_Hang).toUpperCase(), So_Tai_Khoan: clean(input.So_Tai_Khoan), Ten_Chu_Tai_Khoan: clean(input.Ten_Chu_Tai_Khoan), Ten_Hien_Thi: clean(input.Ten_Hien_Thi), Mac_Dinh: Boolean(input.Mac_Dinh), Trang_Thai: 'HOAT_DONG', Created_At: new Date(), Updated_At: new Date() };
+    const accountNumber = clean(input.So_Tai_Khoan).replace(/[\s.-]/g, '');
+    if (!/^\d{4,30}$/.test(accountNumber)) throw new Error('Số tài khoản chỉ được gồm 4–30 chữ số');
+    const isDefault = Boolean(input.Mac_Dinh) || !this.store.all('TAI_KHOAN_NGAN_HANG').some(row => row.Trang_Thai !== 'DA_HUY' && truthy(row.Mac_Dinh));
+    if (isDefault) this.store.all('TAI_KHOAN_NGAN_HANG').filter(row => row.Trang_Thai !== 'DA_HUY' && truthy(row.Mac_Dinh)).forEach(row => this.store.update('TAI_KHOAN_NGAN_HANG', 'Ma_TK', row.Ma_TK, { Mac_Dinh: false, Updated_At: new Date() }));
+    const record = { Ma_TK: this.deps.id('NH'), Ma_Ngan_Hang: clean(input.Ma_Ngan_Hang).toUpperCase(), So_Tai_Khoan: accountNumber, Ten_Chu_Tai_Khoan: clean(input.Ten_Chu_Tai_Khoan), Ten_Hien_Thi: clean(input.Ten_Hien_Thi), Mac_Dinh: isDefault, Trang_Thai: 'HOAT_DONG', Created_At: new Date(), Updated_At: new Date() };
     this.store.insert('TAI_KHOAN_NGAN_HANG', record); this.audit('TAO_TAI_KHOAN', 'TAI_KHOAN_NGAN_HANG', record.Ma_TK, null, { ...record, So_Tai_Khoan: maskAccount(record.So_Tai_Khoan) }); return record;
   }
 
@@ -112,7 +134,7 @@ export class FinDebtService {
 function mapDocument(row) { return { ...row, id: row.Ma_CT, partnerId: row.Ma_DT, type: row.Loai_Cong_No, originalAmount: money(row.So_Tien_Goc), dueDate: row.Han_Thanh_Toan, voided: row.Trang_Thai_Ban_Ghi === 'DA_HUY' }; }
 function mapBank(row) { return row ? { bankCode: row.Ma_Ngan_Hang, accountNumber: row.So_Tai_Khoan, accountName: row.Ten_Chu_Tai_Khoan } : null; }
 function dashboard(summary, promises, today) { const open = summary.rows.filter(row => row.outstanding > 0); return { kpis: { receivable: summary.receivable, payable: summary.payable, net: summary.net, overdue: summary.overdue }, aging: summary.aging, dueSoon: open.filter(row => day(row.Han_Thanh_Toan) >= day(today) && day(row.Han_Thanh_Toan) - day(today) <= 7 * 86400000).slice(0, 8), overdue: open.filter(row => row.daysOverdue > 0).sort((a, b) => b.daysOverdue - a.daysOverdue).slice(0, 8), promises: { today: promises.filter(p => dateKey(p.Ngay_Hen) === dateKey(today)), upcoming: promises.filter(p => day(p.Ngay_Hen) > day(today)), late: promises.filter(p => day(p.Ngay_Hen) < day(today)) } }; }
-function publicConfig(config) { const allowed = ['TEN_DOANH_NGHIEP', 'THEME', 'NHAC_NO_LICH', 'NHAC_NO_SAU_30', 'EMAIL_TEMPLATE']; return Object.fromEntries(allowed.map(key => [key, config[key]])); }
+function publicConfig(config) { const allowed = ['TEN_DOANH_NGHIEP', 'MA_SO_THUE', 'DIA_CHI_DOANH_NGHIEP', 'SO_DIEN_THOAI', 'EMAIL_KE_TOAN', 'WEBSITE', 'NGUOI_DAI_DIEN', 'CHUC_VU_DAI_DIEN', 'LOGO_FILE_ID', 'THEME', 'NHAC_NO_LICH', 'NHAC_NO_SAU_30', 'EMAIL_TEMPLATE']; return Object.fromEntries(allowed.map(key => [key, config[key]])); }
 function renderEmail(template, partner, document, config) { return String(template).replaceAll('{{TEN_KHACH_HANG}}', partner.Ten_DT).replaceAll('{{SO_CHUNG_TU}}', document.So_Chung_Tu).replaceAll('{{SO_TIEN_CON_LAI}}', formatVnd(document.outstanding)).replaceAll('{{HAN_THANH_TOAN}}', dateKey(document.Han_Thanh_Toan)).replaceAll('{{TEN_DOANH_NGHIEP}}', config.TEN_DOANH_NGHIEP || 'Doanh nghiệp'); }
 function defaultEmailTemplate() { return 'Kính gửi {{TEN_KHACH_HANG}},\n\n{{TEN_DOANH_NGHIEP}} xin nhắc khoản công nợ chứng từ {{SO_CHUNG_TU}}, còn lại {{SO_TIEN_CON_LAI}}, hạn thanh toán {{HAN_THANH_TOAN}}. Kính mong Quý khách kiểm tra và phản hồi lịch thanh toán.\n\nTrân trọng.'; }
 function requireText(value, label) { if (!value || !String(value).trim()) throw new Error(`${label} là bắt buộc`); return String(value).trim(); }
@@ -122,7 +144,8 @@ function moneyPositive(value) { const number = money(value); if (number <= 0) th
 function integer(value) { const number = Number(value); if (!Number.isInteger(number) || number < 0) throw new Error('Giá trị số nguyên không hợp lệ'); return number; }
 function validDate(value) { const date = new Date(value); if (Number.isNaN(date.getTime())) throw new Error('Ngày không hợp lệ'); return date; }
 function truthy(value) { return value === true || String(value).toLowerCase() === 'true'; }
-function day(value) { const d = new Date(value); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); }
-function dateKey(value) { return new Date(value).toISOString().slice(0, 10); }
+function day(value) { return toDay(value); }
+function dateKey(value) { return civilDateKey(value); }
 function formatVnd(value) { return `${Number(value).toLocaleString('vi-VN')} ₫`; }
 function maskAccount(value) { const text = String(value); return `${'*'.repeat(Math.max(0, text.length - 4))}${text.slice(-4)}`; }
+function normalizeText(value) { return String(value || '').trim().toLocaleLowerCase('vi-VN').replace(/\s+/g, ' '); }

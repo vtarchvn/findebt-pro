@@ -1,18 +1,20 @@
 import { SheetStore } from '../infrastructure/sheetStore.js';
-import { USER_SHEETS, inputHeaderKey } from '../infrastructure/schema.js';
+import { TABLES, USER_SHEETS, inputHeaderKey } from '../infrastructure/schema.js';
 import { WorkspaceManager } from '../infrastructure/workspace.js';
 import { FinDebtService } from '../application/findebtService.js';
 import { canAccess, normalizeEmail } from '../domain/access.js';
 
 const IMPORT_TYPES = Object.freeze(['DOI_TUONG', 'CHUNG_TU_CONG_NO']);
+const EXPORT_TABLES = Object.freeze(['DOI_TUONG', 'CHUNG_TU_CONG_NO']);
 const BOOTSTRAP_CACHE_SECONDS = 120;
 const HEALTH_CACHE_SECONDS = 300;
+const CACHE_SCHEMA_VERSION = 2;
 
 function manager() { return new WorkspaceManager(); }
 
-function createService(requiredRole = 'VIEWER') {
+function createService(requiredRole = 'VIEWER', migrationLockHeld = false) {
   const workspace = manager().requireWorkspace();
-  const store = new SheetStore(workspace.spreadsheet); store.migrate();
+  const store = new SheetStore(workspace.spreadsheet); migrateStore(store, migrationLockHeld);
   if (store.config().WORKSPACE_MODE === 'SNAPSHOT' && requiredRole !== 'VIEWER') throw new Error('Snapshot ở chế độ chỉ đọc. Hãy nhân bản thành workspace hoạt động trước khi ghi dữ liệu.');
   const identity = authorize(store, requiredRole);
   const app = new FinDebtService(store, {
@@ -23,43 +25,151 @@ function createService(requiredRole = 'VIEWER') {
   app.workspace = workspace; app.identity = identity; return app;
 }
 
-function locked(requiredRole, operation) {
-  const lock = LockService.getScriptLock(); lock.waitLock(30000);
-  try { return operation(createService(requiredRole)); } finally { lock.releaseLock(); }
+function migrateStore(store, lockHeld) {
+  if (!store.needsMigration()) return;
+  if (lockHeld) { store.migrate(); return; }
+  const lock = acquireScriptLock(5000, 'Workspace đang được nâng cấp. Vui lòng chờ vài giây rồi thử lại.');
+  try { store.migrate(); } finally { lock.releaseLock(); }
 }
+
+function acquireScriptLock(timeoutMs = 30000, message = 'Hệ thống đang xử lý một thao tác ghi khác. Vui lòng thử lại sau ít giây.') {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(timeoutMs)) throw new Error(message);
+  return lock;
+}
+
+function locked(requiredRole, operation) {
+  const lock = acquireScriptLock();
+  try { return operation(createService(requiredRole, true)); } finally { lock.releaseLock(); }
+}
+
+function readOnly(requiredRole, operation) { return operation(createService(requiredRole)); }
 
 function mutatingLocked(requiredRole, operation) {
   return locked(requiredRole, app => { const result = operation(app); bumpDataVersion(app); return result; });
 }
 
-function doGet() { return HtmlService.createTemplateFromFile('Index').evaluate().setTitle('FINDEBT PRO').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).addMetaTag('viewport', 'width=device-width, initial-scale=1'); }
-function getSessionContext() { return manager().context(); }
+function doGet() {
+  return HtmlService.createTemplateFromFile('Index')
+    .evaluate()
+    .setTitle('FINDEBT PRO')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+function include(filename) {
+  if (filename !== 'Client') throw new Error('Tệp giao diện không được phép.');
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+function getSessionContext() { return manager().session(); }
+function bootstrapSession() { const session = manager().session(); return session.connected ? { session, data: enrichedBootstrap(createService('VIEWER')) } : { session, data: null }; }
 
 function createWorkspace(company) {
-  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  const lock = acquireScriptLock();
   try {
-    const session = manager().create(company || {}); const app = createService('OWNER'); app.initialize(company || {});
+    const session = manager().create(company || {}); const app = createService('OWNER', true); app.initialize(company || {});
     return { session, data: enrichedBootstrap(app) };
   } finally { lock.releaseLock(); }
 }
 
 function connectWorkspace(rootFolderId) {
-  const lock = LockService.getScriptLock(); lock.waitLock(30000);
-  try { const session = manager().connect(rootFolderId); return { session, data: enrichedBootstrap(createService('VIEWER')) }; }
+  const lock = acquireScriptLock();
+  try { const session = manager().connect(rootFolderId); return { session, data: enrichedBootstrap(createService('VIEWER', true)) }; }
   finally { lock.releaseLock(); }
 }
 
 function disconnectWorkspace() { return manager().disconnect(); }
 function initialize(company) { return manager().context().connected ? locked('ADMIN', app => app.initialize(company)) : createWorkspace(company); }
-function bootstrap() { return locked('VIEWER', app => enrichedBootstrap(app)); }
+function bootstrap() { return readOnly('VIEWER', app => enrichedBootstrap(app)); }
 function savePartner(input) { return mutatingLocked('ACCOUNTANT', app => app.savePartner(input)); }
 function createDocument(input) { return mutatingLocked('ACCOUNTANT', app => app.createDocument(input)); }
 function recordPayment(input) { return mutatingLocked('ACCOUNTANT', app => app.recordPayment(input)); }
 function voidRecord(table, id) { return mutatingLocked('ADMIN', app => app.voidRecord(table, id)); }
 function savePromise(input) { return mutatingLocked('ACCOUNTANT', app => app.savePromise(input)); }
 function saveBankAccount(input) { return mutatingLocked('ADMIN', app => app.saveBankAccount(input)); }
-function getVietQr(documentId, accountId) { return locked('VIEWER', app => app.getVietQr(documentId, accountId)); }
+function saveCompanyProfile(input) {
+  return mutatingLocked('ADMIN', app => {
+    const current = app.store.config(); const name = String(input?.TEN_DOANH_NGHIEP || '').trim().replace(/\s+/g, ' ').slice(0, 120);
+    if (!name) throw new Error('Tên doanh nghiệp là bắt buộc.');
+    const fields = ['MA_SO_THUE', 'DIA_CHI_DOANH_NGHIEP', 'SO_DIEN_THOAI', 'EMAIL_KE_TOAN', 'WEBSITE', 'NGUOI_DAI_DIEN', 'CHUC_VU_DAI_DIEN'];
+    const profile = { TEN_DOANH_NGHIEP: name };
+    fields.forEach(key => { profile[key] = String(input?.[key] || '').trim().slice(0, 300); });
+    if (profile.EMAIL_KE_TOAN && !isEmail(profile.EMAIL_KE_TOAN)) throw new Error('Email kế toán không hợp lệ.');
+    let newLogo = null;
+    if (input?.logoDataUrl) {
+      const match = String(input.logoDataUrl).match(/^data:(image\/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)$/);
+      if (!match) throw new Error('Logo phải là ảnh PNG hoặc JPG.');
+      const bytes = Utilities.base64Decode(match[2]); if (bytes.length > 1500000) throw new Error('Logo không được vượt quá 1,5 MB.');
+      const extension = match[1] === 'image/png' ? 'png' : 'jpg'; const blob = Utilities.newBlob(bytes, match[1], `LOGO_DOANH_NGHIEP_${Date.now()}.${extension}`);
+      newLogo = manager().folder('06_ATTACHMENTS').createFile(blob); profile.LOGO_FILE_ID = newLogo.getId();
+    } else if (input?.removeLogo) profile.LOGO_FILE_ID = '';
+    app.store.setConfig(profile);
+    DriveApp.getFolderById(app.workspace.rootFolderId).setName(`FINDEBT_PRO — ${name}`); app.store.spreadsheet.setName(`FINDEBT PRO — ${name}`);
+    if ((newLogo || input?.removeLogo) && current.LOGO_FILE_ID && current.LOGO_FILE_ID !== profile.LOGO_FILE_ID) { try { DriveApp.getFileById(current.LOGO_FILE_ID).setTrashed(true); } catch { /* Logo cũ có thể đã bị xóa thủ công. */ } }
+    app.audit('CAP_NHAT_HO_SO_DOANH_NGHIEP', 'CONFIG', 'COMPANY_PROFILE', current, profile); return { ok: true, profile };
+  });
+}
+function getVietQr(documentId, accountId) { return readOnly('VIEWER', app => app.getVietQr(documentId, accountId)); }
 function processReminders() { return mutatingLocked('ACCOUNTANT', app => app.processReminders()); }
+
+function seedDemoData() {
+  return mutatingLocked('OWNER', app => {
+    const marker = '[DU_LIEU_MAU_V1]';
+    const partnerSpecs = [
+      { key: 'north', Ten_DT: 'Công ty Nội thất Northwind (Mẫu)', Phan_Loai: 'KHACH_HANG', So_Dien_Thoai: '0900000001', Han_Muc_Tin_Dung: 250000000, Thoi_Han_No_Chuan: 30 },
+      { key: 'lotus', Ten_DT: 'Công ty Kiến trúc Lotus (Mẫu)', Phan_Loai: 'KHACH_HANG', So_Dien_Thoai: '0900000002', Han_Muc_Tin_Dung: 150000000, Thoi_Han_No_Chuan: 20 },
+      { key: 'anphu', Ten_DT: 'Showroom An Phú (Mẫu)', Phan_Loai: 'KHACH_HANG', So_Dien_Thoai: '0900000003', Han_Muc_Tin_Dung: 100000000, Thoi_Han_No_Chuan: 30 },
+      { key: 'material', Ten_DT: 'NCC Vật liệu Minh Long (Mẫu)', Phan_Loai: 'NHA_CUNG_CAP', So_Dien_Thoai: '0900000004', Han_Muc_Tin_Dung: 0, Thoi_Han_No_Chuan: 30 },
+      { key: 'logistics', Ten_DT: 'NCC Vận chuyển Đông Nam (Mẫu)', Phan_Loai: 'NHA_CUNG_CAP', So_Dien_Thoai: '0900000005', Han_Muc_Tin_Dung: 0, Thoi_Han_No_Chuan: 15 }
+    ];
+    const partnersByKey = {};
+    const existingPartners = app.store.all('DOI_TUONG');
+    partnerSpecs.forEach(spec => {
+      const existing = existingPartners.find(row => row.Ten_DT === spec.Ten_DT && row.Trang_Thai !== 'DA_HUY');
+      partnersByKey[spec.key] = existing || app.savePartner({ ...spec, Email: '', Dia_Chi: 'Dữ liệu phục vụ kiểm thử', Ghi_Chu: marker, Cho_Phep_Nhac_No: false });
+    });
+
+    const documentSpecs = [
+      { key: 'overdue', partner: 'north', type: 'PHAI_THU', number: 'MAU-PT-001', issued: -75, due: -45, amount: 160000000, note: 'Phải thu quá hạn lâu' },
+      { key: 'partial', partner: 'north', type: 'PHAI_THU', number: 'MAU-PT-002', issued: -10, due: 5, amount: 90000000, note: 'Phải thu đã thanh toán một phần' },
+      { key: 'paid', partner: 'lotus', type: 'PHAI_THU', number: 'MAU-PT-003', issued: -25, due: 0, amount: 70000000, note: 'Phải thu đã thanh toán đủ' },
+      { key: 'future', partner: 'anphu', type: 'PHAI_THU', number: 'MAU-PT-004', issued: -3, due: 25, amount: 55000000, note: 'Phải thu chưa đến hạn' },
+      { key: 'payableOverdue', partner: 'material', type: 'PHAI_TRA', number: 'MAU-PC-001', issued: -50, due: -20, amount: 110000000, note: 'Phải trả quá hạn, đã trả một phần' },
+      { key: 'payableSoon', partner: 'logistics', type: 'PHAI_TRA', number: 'MAU-PC-002', issued: -5, due: 7, amount: 48000000, note: 'Phải trả sắp đến hạn' }
+    ];
+    const documentsByKey = {};
+    const existingDocuments = app.store.all('CHUNG_TU_CONG_NO');
+    documentSpecs.forEach(spec => {
+      const partner = partnersByKey[spec.partner];
+      const existing = existingDocuments.find(row => row.Ma_DT === partner.Ma_DT && row.So_Chung_Tu === spec.number && row.Trang_Thai_Ban_Ghi !== 'DA_HUY');
+      documentsByKey[spec.key] = existing || app.createDocument({ Ma_DT: partner.Ma_DT, Loai_Cong_No: spec.type, So_Chung_Tu: spec.number, Ngay_Chung_Tu: demoDate(spec.issued), Han_Thanh_Toan: demoDate(spec.due), So_Tien_Goc: spec.amount, Dien_Giai: `${spec.note} ${marker}` }).document;
+    });
+
+    const paymentSpecs = [
+      { key: 'partial', ref: 'DEMO-PAY-001', amount: 35000000, date: -4 },
+      { key: 'paid', ref: 'DEMO-PAY-002', amount: 70000000, date: -2 },
+      { key: 'payableOverdue', ref: 'DEMO-PAY-003', amount: 40000000, date: -6 }
+    ];
+    const existingPayments = app.store.all('THANH_TOAN');
+    paymentSpecs.forEach(spec => {
+      if (existingPayments.some(row => row.Tham_Chieu === spec.ref && row.Trang_Thai_Ban_Ghi !== 'DA_HUY')) return;
+      const document = documentsByKey[spec.key];
+      app.recordPayment({ Ma_DT: document.Ma_DT, Loai_Cong_No: document.Loai_Cong_No, Ngay_Thanh_Toan: demoDate(spec.date), So_Tien: spec.amount, Phuong_Thuc: 'CHUYEN_KHOAN', Tham_Chieu: spec.ref, Ghi_Chu: marker, Phan_Bo: [{ Ma_CT: document.Ma_CT, So_Tien_Phan_Bo: spec.amount }] });
+    });
+
+    const promiseDocument = documentsByKey.overdue;
+    if (!app.store.all('HEN_THANH_TOAN').some(row => row.Ghi_Chu === marker && row.Ma_CT === promiseDocument.Ma_CT && row.Trang_Thai === 'DANG_HEN')) {
+      app.savePromise({ Ma_DT: promiseDocument.Ma_DT, Ma_CT: promiseDocument.Ma_CT, Ngay_Hen: demoDate(4), So_Tien_Hen: 50000000, Ghi_Chu: marker });
+    }
+
+    const data = app.bootstrap();
+    refreshConsole(app, data, workspaceHealth(app));
+    const result = { ok: true, marker, workspaceId: app.workspace.workspaceId, partners: data.partners.length, documents: data.documents.length, payments: app.store.all('THANH_TOAN').filter(row => row.Trang_Thai_Ban_Ghi !== 'DA_HUY').length, promises: data.promises.length };
+    console.log(JSON.stringify(result));
+    return result;
+  });
+}
+
+function demoDate(offsetDays) { const date = new Date(); date.setHours(12, 0, 0, 0); date.setDate(date.getDate() + offsetDays); return Utilities.formatDate(date, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd'); }
 
 function createReminderTrigger() {
   createService('ADMIN'); ScriptApp.getProjectTriggers().filter(trigger => trigger.getHandlerFunction() === 'processReminders').forEach(trigger => ScriptApp.deleteTrigger(trigger));
@@ -89,8 +199,13 @@ function restoreBackup(fileId) {
     const folder = manager().folder('05_BACKUPS'); const allowed = folder.getFiles(); let sourceFile = null;
     while (allowed.hasNext()) { const candidate = allowed.next(); if (candidate.getId() === fileId) { sourceFile = candidate; break; } }
     if (!sourceFile) throw new Error('Backup không thuộc workspace hiện tại.'); DriveApp.getFileById(app.store.spreadsheet.getId()).makeCopy(`FINDEBT_BEFORE_RESTORE_${stamp()}`, folder);
-    const source = SpreadsheetApp.openById(sourceFile.getId()); source.getSheets().forEach(sourceSheet => { const target = app.store.spreadsheet.getSheetByName(sourceSheet.getName()) || app.store.spreadsheet.insertSheet(sourceSheet.getName()); target.clear(); const values = sourceSheet.getDataRange().getValues(); if (values.length && values[0].length) target.getRange(1, 1, values.length, values[0].length).setValues(values); });
-    app.store.migrate(); app.audit('RESTORE_BACKUP', 'DRIVE', fileId, null, { restoredAt: new Date() }); return { ok: true };
+    const source = SpreadsheetApp.openById(sourceFile.getId()); const sourceNames = new Set(source.getSheets().map(sheet => sheet.getName()));
+    const missing = ['CONFIG', ...Object.keys(TABLES)].filter(name => !sourceNames.has(name)); if (missing.length) throw new Error(`Backup thiếu cấu trúc bắt buộc: ${missing.join(', ')}`);
+    const target = app.store.spreadsheet; const temporary = target.insertSheet(`__RESTORE_${Date.now()}__`);
+    target.getSheets().filter(sheet => sheet.getSheetId() !== temporary.getSheetId()).forEach(sheet => target.deleteSheet(sheet));
+    source.getSheets().forEach(sourceSheet => { const restored = sourceSheet.copyTo(target).setName(sourceSheet.getName()); restored.setTabColor(sourceSheet.getTabColor()); });
+    const start = target.getSheetByName(USER_SHEETS.START) || target.getSheets().find(sheet => !sheet.isSheetHidden()) || target.getSheets()[0]; start.showSheet(); target.setActiveSheet(start); target.deleteSheet(temporary);
+    app.store.cache.clear(); app.store.migrate(); app.audit('RESTORE_BACKUP', 'DRIVE', fileId, null, { restoredAt: new Date(), sheets: source.getSheets().length }); bumpDataVersion(app); return { ok: true };
   });
 }
 
@@ -111,8 +226,8 @@ function cloneWorkspace(mode = 'TEMPLATE') {
   });
 }
 
-function exportCsv(table) { return locked('VIEWER', app => { const rows = app.store.all(table); if (!rows.length) return ''; const headers = Object.keys(rows[0]); return [headers, ...rows.map(row => headers.map(header => row[header]))].map(row => row.map(csvCell).join(',')).join('\r\n'); }); }
-function previewCsv(entityType, csvText, fileName = 'import.csv') { return locked('ACCOUNTANT', app => prepareImport(app, entityType, csvText, fileName, false)); }
+function exportCsv(table) { if (!EXPORT_TABLES.includes(table)) throw new Error('Loại dữ liệu không được phép xuất.'); return readOnly('VIEWER', app => { const rows = app.store.all(table); if (!rows.length) return ''; const headers = TABLES[table]; return [headers, ...rows.map(row => headers.map(header => row[header]))].map(row => row.map(csvCell).join(',')).join('\r\n'); }); }
+function previewCsv(entityType, csvText, fileName = 'import.csv') { return readOnly('ACCOUNTANT', app => prepareImport(app, entityType, csvText, fileName, false)); }
 function commitCsv(entityType, csvText, fileName = 'import.csv') { return mutatingLocked('ACCOUNTANT', app => prepareImport(app, entityType, csvText, fileName, true)); }
 function importCsv(entityType, csvText, fileName = 'import.csv') { return commitCsv(entityType, csvText, fileName); }
 
@@ -140,32 +255,121 @@ function removeMember(email) {
   });
 }
 
-function generateDebtPdf(partnerId) {
+function generateDebtPdf(partnerId, documentType = 'PAYMENT_NOTICE') {
   return locked('ACCOUNTANT', app => {
-    const data = app.bootstrap(); const partner = data.partners.find(p => p.Ma_DT === partnerId); if (!partner) throw new Error('Không tìm thấy đối tượng.'); const docs = app.accountingModel(new Date()).summary.rows.filter(row => row.Ma_DT === partnerId && row.outstanding > 0); const total = docs.reduce((sum, row) => sum + row.outstanding, 0);
-    const doc = DocumentApp.create(`Phiếu công nợ ${partner.Ma_DT} ${new Date().toISOString().slice(0, 10)}`); const body = doc.getBody(); body.appendHeading(data.config.TEN_DOANH_NGHIEP || 'FINDEBT PRO', DocumentApp.ParagraphHeading.HEADING1); body.appendHeading('THÔNG BÁO CÔNG NỢ', DocumentApp.ParagraphHeading.HEADING2); body.appendParagraph(`Khách hàng/NCC: ${partner.Ten_DT} (${partner.Ma_DT})`); body.appendParagraph(`Ngày lập: ${new Date().toLocaleDateString('vi-VN')}`);
-    const table = body.appendTable([['Chứng từ', 'Ngày CT', 'Hạn TT', 'Tiền gốc', 'Đã TT', 'Còn lại'], ...docs.map(row => [String(row.So_Chung_Tu), String(row.Ngay_Chung_Tu).slice(0, 10), String(row.Han_Thanh_Toan).slice(0, 10), formatVnd(row.originalAmount), formatVnd(row.originalAmount - row.outstanding), formatVnd(row.outstanding)])]); table.getRow(0).editAsText().setBold(true); body.appendParagraph(`TỔNG CÒN LẠI: ${formatVnd(total)}`).setBold(true); doc.saveAndClose(); const pdf = DriveApp.getFileById(doc.getId()).getAs(MimeType.PDF); const folder = manager().folder('03_REPORTS/STATEMENTS'); const file = folder.createFile(pdf).setName(`${doc.getName()}.pdf`); DriveApp.getFileById(doc.getId()).setTrashed(true); app.audit('TAO_PDF', 'DRIVE', file.getId(), null, { partnerId, total }); return { id: file.getId(), name: file.getName(), url: file.getUrl(), total };
+    if (!['PAYMENT_NOTICE', 'RECONCILIATION'].includes(documentType)) throw new Error('Loại tài liệu công nợ không hợp lệ.');
+    const now = new Date(); const data = app.bootstrap(); const config = app.store.config(); const partner = data.partners.find(item => item.Ma_DT === partnerId);
+    if (!partner) throw new Error('Không tìm thấy khách hàng hoặc nhà cung cấp.');
+    const openDocuments = app.accountingModel(now).summary.rows.filter(row => row.Ma_DT === partnerId && row.outstanding > 0).sort((a, b) => String(a.Han_Thanh_Toan).localeCompare(String(b.Han_Thanh_Toan)));
+    const documents = documentType === 'PAYMENT_NOTICE' ? openDocuments.filter(row => row.Loai_Cong_No === 'PHAI_THU') : openDocuments;
+    if (!documents.length) throw new Error(documentType === 'PAYMENT_NOTICE' ? 'Khách hàng này không có khoản phải thu còn lại để lập đề nghị thanh toán.' : 'Khách hàng hoặc nhà cung cấp này không có số dư công nợ để đối chiếu.');
+    const total = documents.reduce((sum, row) => sum + row.outstanding, 0); const overdueDays = Math.max(0, ...documents.map(row => row.daysOverdue || 0)); const bank = data.bankAccounts.find(account => truthyValue(account.Mac_Dinh)) || data.bankAccounts[0];
+    const title = documentType === 'RECONCILIATION' ? 'BIÊN BẢN ĐỐI CHIẾU CÔNG NỢ' : paymentNoticeTitle(documents, now); const prefix = documentType === 'RECONCILIATION' ? 'BBĐC' : 'TBCN'; const localDocumentDay = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'yyyyMMdd'); const localFileDay = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd'); const documentNumber = `${prefix}-${localDocumentDay}-${partner.Ma_DT}`;
+    const doc = DocumentApp.create(`${title} ${partner.Ma_DT} ${localFileDay}`); const body = doc.getBody(); body.setMarginTop(30).setMarginBottom(30).setMarginLeft(40).setMarginRight(40);
+    appendDocumentHeader(body, config, documentNumber);
+    const heading = body.appendParagraph(title); heading.setHeading(DocumentApp.ParagraphHeading.HEADING1).setAlignment(DocumentApp.HorizontalAlignment.CENTER).setSpacingBefore(14).setSpacingAfter(3); heading.editAsText().setForegroundColor('#17324d').setBold(true).setFontSize(16);
+    const dateLine = body.appendParagraph(`Ngày lập: ${formatDateVi(now)}  |  Đơn vị tiền tệ: VND`); dateLine.setAlignment(DocumentApp.HorizontalAlignment.CENTER).setSpacingAfter(12); dateLine.editAsText().setForegroundColor('#64748b').setFontSize(9);
+    appendRecipientBlock(body, partner);
+    if (documentType === 'RECONCILIATION') appendReconciliationIntro(body, config, partner, now);
+    else appendPaymentNoticeIntro(body, config, partner, documents, overdueDays);
+    const table = body.appendTable([['Số chứng từ', 'Ngày chứng từ', 'Hạn thanh toán', 'Giá trị', 'Đã thanh toán', 'Còn phải thanh toán'], ...documents.map(row => [String(row.So_Chung_Tu), formatDateVi(row.Ngay_Chung_Tu), formatDateVi(row.Han_Thanh_Toan), formatVnd(row.originalAmount), formatVnd(row.originalAmount - row.outstanding), formatVnd(row.outstanding)])]);
+    styleDebtTable(table);
+    const balanceLabel = documentType === 'PAYMENT_NOTICE' ? 'TỔNG SỐ TIỀN ĐỀ NGHỊ THANH TOÁN' : reconciliationBalanceLabel(documents);
+    const totalBox = body.appendTable([[balanceLabel, formatVnd(total)]]); totalBox.setBorderWidth(0); totalBox.getRow(0).getCell(0).setBackgroundColor('#eaf1f7').editAsText().setBold(true).setForegroundColor('#17324d').setFontSize(9); totalBox.getRow(0).getCell(1).setBackgroundColor('#eaf1f7').editAsText().setBold(true).setForegroundColor('#17324d').setFontSize(11); alignTableCell(totalBox.getRow(0).getCell(1), DocumentApp.HorizontalAlignment.RIGHT);
+    if (documentType === 'RECONCILIATION') appendReconciliationClosing(body, config, partner, total, balanceLabel);
+    else appendPaymentInstructions(body, config, partner, bank, total, documentNumber, overdueDays);
+    const footer = body.appendParagraph(`Tài liệu được lập từ dữ liệu công nợ tại thời điểm phát hành | ${config.TEN_DOANH_NGHIEP || 'Doanh nghiệp'}`); footer.setAlignment(DocumentApp.HorizontalAlignment.CENTER).setSpacingBefore(14); footer.editAsText().setForegroundColor('#94a3b8').setFontSize(7);
+    body.editAsText().setFontFamily('Arial');
+    doc.saveAndClose(); const pdf = DriveApp.getFileById(doc.getId()).getAs(MimeType.PDF); const folder = manager().folder('03_REPORTS/STATEMENTS'); const file = folder.createFile(pdf).setName(`${doc.getName()}.pdf`); DriveApp.getFileById(doc.getId()).setTrashed(true);
+    app.audit('TAO_PDF', 'DRIVE', file.getId(), null, { partnerId, documentType, total, documentNumber }); return { id: file.getId(), name: file.getName(), url: file.getUrl(), total, documentType, documentNumber };
   });
 }
+
+function paymentNoticeTitle(documents, now) {
+  if (documents.some(row => row.daysOverdue > 0)) return 'THƯ ĐỀ NGHỊ THANH TOÁN CÔNG NỢ';
+  if (documents.some(row => isoDay(row.Han_Thanh_Toan) === isoDay(now))) return 'ĐỀ NGHỊ THANH TOÁN';
+  return 'THÔNG BÁO CÔNG NỢ SẮP ĐẾN HẠN';
+}
+
+function appendDocumentHeader(body, config, documentNumber) {
+  const header = body.appendTable([['', '']]); header.setBorderWidth(0); const logoCell = header.getRow(0).getCell(0); const infoCell = header.getRow(0).getCell(1); logoCell.setWidth(90); infoCell.setWidth(430); logoCell.setVerticalAlignment(DocumentApp.VerticalAlignment.MIDDLE); infoCell.setVerticalAlignment(DocumentApp.VerticalAlignment.MIDDLE);
+  let hasLogo = false; if (config.LOGO_FILE_ID) { try { const image = logoCell.appendImage(DriveApp.getFileById(config.LOGO_FILE_ID).getBlob()); fitInlineImage(image, 96, 54); hasLogo = true; } catch { /* Hiển thị chữ thay cho logo lỗi. */ } }
+  if (!hasLogo) { logoCell.setText(String(config.TEN_DOANH_NGHIEP || 'DN').split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()); logoCell.setBackgroundColor('#f1f5f9'); logoCell.editAsText().setForegroundColor('#17324d').setBold(true).setFontSize(18); alignTableCell(logoCell, DocumentApp.HorizontalAlignment.CENTER); }
+  const lines = [String(config.TEN_DOANH_NGHIEP || 'DOANH NGHIỆP').toUpperCase()]; if (config.MA_SO_THUE) lines.push(`Mã số thuế: ${config.MA_SO_THUE}`); if (config.DIA_CHI_DOANH_NGHIEP) lines.push(`Địa chỉ: ${config.DIA_CHI_DOANH_NGHIEP}`); if (config.SO_DIEN_THOAI || config.EMAIL_KE_TOAN) lines.push([config.SO_DIEN_THOAI ? `Điện thoại: ${config.SO_DIEN_THOAI}` : '', config.EMAIL_KE_TOAN ? `Email: ${config.EMAIL_KE_TOAN}` : ''].filter(Boolean).join('  |  ')); if (config.WEBSITE) lines.push(`Website: ${config.WEBSITE}`);
+  infoCell.setText(lines.join('\n')); infoCell.editAsText().setForegroundColor('#334155').setFontSize(8); infoCell.editAsText().setBold(0, lines[0].length - 1, true);
+  const numberLine = body.appendParagraph(`Số: ${documentNumber}`); numberLine.setAlignment(DocumentApp.HorizontalAlignment.RIGHT).setSpacingBefore(4); numberLine.editAsText().setForegroundColor('#64748b').setFontSize(8);
+}
+
+function appendRecipientBlock(body, partner) {
+  const partnerType = partner.Phan_Loai === 'NHA_CUNG_CAP' ? 'NHÀ CUNG CẤP' : 'KHÁCH HÀNG';
+  const rows = [['KÍNH GỬI', partner.Ten_DT], [`MÃ ${partnerType}`, partner.Ma_DT], ['ĐỊA CHỈ', partner.Dia_Chi || 'Chưa cập nhật']]; if (partner.Nguoi_Lien_He || partner.So_Dien_Thoai || partner.Email) rows.push(['LIÊN HỆ', [partner.Nguoi_Lien_He, partner.So_Dien_Thoai, partner.Email].filter(Boolean).join(' | ')]);
+  const recipient = body.appendTable(rows); recipient.setBorderWidth(0);
+  for (let row = 0; row < recipient.getNumRows(); row += 1) { recipient.getRow(row).getCell(0).setBackgroundColor('#f1f5f9').editAsText().setForegroundColor('#64748b').setBold(true).setFontSize(8); recipient.getRow(row).getCell(1).editAsText().setForegroundColor('#1e293b').setFontSize(9); }
+}
+
+function fitInlineImage(image, maxWidth, maxHeight) { const width = image.getWidth(); const height = image.getHeight(); const scale = Math.min(maxWidth / width, maxHeight / height, 1); image.setWidth(Math.round(width * scale)).setHeight(Math.round(height * scale)); }
+
+function appendPaymentNoticeIntro(body, config, partner, documents, overdueDays) {
+  const company = config.TEN_DOANH_NGHIEP || 'FINDEBT PRO'; const earliestDue = documents[0]?.Han_Thanh_Toan;
+  const intro = body.appendParagraph(overdueDays > 0 ? `Căn cứ số liệu công nợ đang theo dõi tại ${company}, các khoản dưới đây hiện còn phải thanh toán và đã quá hạn tối đa ${overdueDays} ngày. Kính đề nghị Quý Khách hàng kiểm tra, đối chiếu và thu xếp thanh toán trong 03 ngày làm việc kể từ ngày nhận được thư này.` : `Căn cứ số liệu công nợ đang theo dõi tại ${company}, các khoản dưới đây ${isoDay(earliestDue) === isoDay(new Date()) ? 'đã đến hạn thanh toán' : `sẽ đến hạn từ ngày ${formatDateVi(earliestDue)}`}. Kính đề nghị Quý Khách hàng kiểm tra và chủ động thanh toán đúng thời hạn.`); intro.setSpacingBefore(10).setSpacingAfter(10).setLineSpacing(1.15);
+}
+
+function appendPaymentInstructions(body, config, partner, bank, total, documentNumber, overdueDays) {
+  const paymentHeading = body.appendParagraph('THÔNG TIN THANH TOÁN'); paymentHeading.setSpacingBefore(12).setSpacingAfter(5); paymentHeading.editAsText().setForegroundColor('#17324d').setBold(true).setFontSize(11);
+  if (bank) {
+    const accountNumber = plainAccountNumber(bank.So_Tai_Khoan); const paymentInfo = body.appendTable([['Ngân hàng', bank.Ma_Ngan_Hang], ['Số tài khoản', accountNumber], ['Chủ tài khoản', bank.Ten_Chu_Tai_Khoan]]); paymentInfo.setBorderWidth(0);
+    for (let row = 0; row < paymentInfo.getNumRows(); row += 1) { paymentInfo.getRow(row).getCell(0).setBackgroundColor('#f8fafc').editAsText().setBold(true).setForegroundColor('#475569').setFontSize(8); paymentInfo.getRow(row).getCell(1).editAsText().setForegroundColor('#1e293b').setFontSize(9); }
+    const content = `TT ${partner.Ma_DT} ${documentNumber}`.slice(0, 50); const qrUrl = `https://img.vietqr.io/image/${encodeURIComponent(bank.Ma_Ngan_Hang)}-${encodeURIComponent(accountNumber)}-compact2.png?amount=${total}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(bank.Ten_Chu_Tai_Khoan)}`;
+    body.appendParagraph(`Nội dung chuyển khoản: ${content}`).setSpacingBefore(5).editAsText().setBold(true).setForegroundColor('#17324d');
+    const qrLine = body.appendParagraph('Mở mã VietQR để thanh toán'); qrLine.setLinkUrl(qrUrl); qrLine.editAsText().setForegroundColor('#0369a1').setBold(true);
+  } else body.appendParagraph('Thông tin tài khoản ngân hàng chưa được cập nhật. Vui lòng liên hệ bộ phận kế toán của đơn vị phát hành trước khi thanh toán.').editAsText().setForegroundColor('#b45309');
+  if (overdueDays > 0) body.appendParagraph(`Tình trạng công nợ: quá hạn tối đa ${overdueDays} ngày tại thời điểm lập thư.`).setSpacingBefore(6).editAsText().setForegroundColor('#b91c1c').setBold(true);
+  body.appendParagraph(`Nếu Quý Khách hàng đã thanh toán hoặc phát hiện số liệu chưa khớp, vui lòng gửi chứng từ hoặc phản hồi đến ${config.EMAIL_KE_TOAN || 'bộ phận kế toán'} để được kiểm tra và cập nhật.`).setSpacingBefore(7).setLineSpacing(1.15);
+}
+
+function appendReconciliationIntro(body, config, partner, now) {
+  const intro = body.appendParagraph(`Căn cứ chứng từ và các khoản thanh toán đã được hai bên ghi nhận đến hết ngày ${formatDateVi(now)}, ${config.TEN_DOANH_NGHIEP || 'Doanh nghiệp'} và ${partner.Ten_DT} cùng đối chiếu số dư công nợ như sau:`); intro.setSpacingBefore(10).setSpacingAfter(10).setLineSpacing(1.15);
+}
+
+function appendReconciliationClosing(body, config, partner, total, balanceLabel) {
+  const confirmation = body.appendParagraph(`Hai bên xác nhận ${balanceLabel.toLowerCase()} tại ngày lập biên bản là ${formatVnd(total)}.`); confirmation.setSpacingBefore(10).setSpacingAfter(5); confirmation.editAsText().setBold(true).setForegroundColor('#17324d');
+  const note = body.appendParagraph('Mọi chênh lệch (nếu có), vui lòng phản hồi kèm chứng từ liên quan trong 03 ngày làm việc kể từ ngày nhận biên bản. Biên bản được lập thành 02 bản có giá trị như nhau, mỗi bên giữ 01 bản.'); note.setSpacingAfter(14).setLineSpacing(1.15);
+  const representative = [config.NGUOI_DAI_DIEN, config.CHUC_VU_DAI_DIEN].filter(Boolean).join(' - '); const left = `ĐẠI DIỆN BÊN LẬP BIÊN BẢN\n${String(config.TEN_DOANH_NGHIEP || 'DOANH NGHIỆP').toUpperCase()}\n${representative ? `${representative}\n` : ''}(Ký, ghi rõ họ tên và đóng dấu)\n\n\n\n`; const right = `ĐẠI DIỆN BÊN XÁC NHẬN\n${String(partner.Ten_DT || 'KHÁCH HÀNG / NHÀ CUNG CẤP').toUpperCase()}\n\n(Ký, ghi rõ họ tên và đóng dấu)\n\n\n\n`;
+  const signatures = body.appendTable([[left, right]]); signatures.setBorderWidth(0); signatures.getRow(0).getCell(0).setBackgroundColor('#f8fafc').editAsText().setBold(true).setForegroundColor('#334155').setFontSize(9); signatures.getRow(0).getCell(1).setBackgroundColor('#f8fafc').editAsText().setBold(true).setForegroundColor('#334155').setFontSize(9);
+}
+
+function styleDebtTable(table) {
+  const header = table.getRow(0); for (let index = 0; index < header.getNumCells(); index += 1) header.getCell(index).setBackgroundColor('#17324d').editAsText().setForegroundColor('#ffffff').setBold(true).setFontSize(8);
+  for (let row = 1; row < table.getNumRows(); row += 1) { const current = table.getRow(row); for (let column = 0; column < current.getNumCells(); column += 1) { current.getCell(column).editAsText().setForegroundColor('#334155').setFontSize(8); if (row % 2 === 0) current.getCell(column).setBackgroundColor('#f4f7fa'); if (column >= 3) alignTableCell(current.getCell(column), DocumentApp.HorizontalAlignment.RIGHT); } }
+}
+
+function reconciliationBalanceLabel(documents) { const kinds = new Set(documents.map(row => row.Loai_Cong_No)); if (kinds.size > 1) return 'TỔNG GIÁ TRỊ CÁC KHOẢN CÔNG NỢ ĐANG MỞ'; return kinds.has('PHAI_TRA') ? 'SỐ TIỀN DOANH NGHIỆP CÒN PHẢI TRẢ' : 'SỐ TIỀN KHÁCH HÀNG CÒN PHẢI THANH TOÁN'; }
+function alignTableCell(cell, alignment) { for (let index = 0; index < cell.getNumChildren(); index += 1) { const child = cell.getChild(index); if (child.getType() === DocumentApp.ElementType.PARAGRAPH) child.asParagraph().setAlignment(alignment); } }
+function plainAccountNumber(value) { const raw = String(value ?? '').trim().replace(/\s+/g, ''); if (!/[eE]/.test(raw)) return raw; const numeric = Number(raw); return Number.isFinite(numeric) ? numeric.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 0 }) : raw; }
+
+function formatDateVi(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : Utilities.formatDate(date, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy'); }
+function isoDay(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : Utilities.formatDate(date, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd'); }
+function truthyValue(value) { return value === true || String(value).toLowerCase() === 'true'; }
 
 function enrichedBootstrap(app) {
   const startedAt = Date.now(); const cached = readBootstrapCache(app); const data = cached.data || app.bootstrap();
   if (!cached.data) writeBootstrapCache(app, data);
   const members = app.store.all('THANH_VIEN').filter(row => row.Trang_Thai === 'HOAT_DONG').map(row => ({ email: row.Email, role: row.Vai_Tro }));
   const workspace = { workspaceId: app.workspace.workspaceId, rootFolderId: app.workspace.rootFolderId, rootFolderUrl: app.workspace.rootFolderUrl, spreadsheetId: app.workspace.spreadsheetId, spreadsheetUrl: app.workspace.spreadsheetUrl, email: app.identity.email, role: app.identity.role };
-  return { ...data, workspace, members, health: null, performance: { bootstrapMs: Date.now() - startedAt, cacheHit: Boolean(cached.data), dataVersion: dataVersion(app) } };
+  const bankAccounts = data.bankAccounts.map(account => app.identity.role === 'VIEWER' ? { ...account, So_Tai_Khoan: maskAccountNumber(account.So_Tai_Khoan) } : account);
+  return { ...data, bankAccounts, workspace, members, health: null, performance: { bootstrapMs: Date.now() - startedAt, cacheHit: Boolean(cached.data), dataVersion: dataVersion(app) } };
 }
 
 function loadWorkspaceHealth() {
-  return locked('VIEWER', app => ({ health: workspaceHealth(app), measuredAt: new Date().toISOString() }));
+  return readOnly('VIEWER', app => ({ health: workspaceHealth(app), measuredAt: new Date().toISOString() }));
 }
 
 function syncDataConsole() {
-  return locked('ACCOUNTANT', app => { const data = readBootstrapCache(app).data || app.bootstrap(); const health = workspaceHealth(app); refreshConsole(app, data, health); return { ok: true, syncedAt: new Date().toISOString() }; });
+  return readOnly('ACCOUNTANT', app => { const data = readBootstrapCache(app).data || app.bootstrap(); const health = workspaceHealth(app); refreshConsole(app, data, health); return { ok: true, syncedAt: new Date().toISOString() }; });
 }
 
 function loadDocumentsPage(query = {}) {
-  return locked('VIEWER', app => {
+  return readOnly('VIEWER', app => {
     const startedAt = Date.now(); const page = Math.max(1, Number(query.page) || 1); const pageSize = Math.min(100, Math.max(10, Number(query.pageSize) || 40));
     const search = normalizeText(query.search); const type = String(query.type || 'ALL'); const status = String(query.status || 'ALL'); const partnerNames = new Map(app.store.all('DOI_TUONG').map(row => [row.Ma_DT, row.Ten_DT]));
     let rows = app.accountingModel(new Date()).summary.rows.map(row => ({ ...row, partnerName: partnerNames.get(row.Ma_DT) || row.Ma_DT }));
@@ -181,7 +385,7 @@ function loadDocumentsPage(query = {}) {
   });
 }
 
-function cacheKey(app, kind) { return `FD:${kind}:${app.workspace.spreadsheetId}:${dataVersion(app)}`; }
+function cacheKey(app, kind) { return `FD:${CACHE_SCHEMA_VERSION}:${kind}:${app.workspace.spreadsheetId}:${dataVersion(app)}`; }
 function dataVersion(app) { return Number(PropertiesService.getScriptProperties().getProperty(`DATA_VERSION_${app.workspace.spreadsheetId}`) || 1); }
 function bumpDataVersion(app) { const next = dataVersion(app) + 1; PropertiesService.getScriptProperties().setProperty(`DATA_VERSION_${app.workspace.spreadsheetId}`, String(next)); return next; }
 function readBootstrapCache(app) { try { const value = CacheService.getScriptCache().get(cacheKey(app, 'BOOT')); return { data: value ? JSON.parse(value) : null }; } catch { return { data: null }; } }
@@ -199,7 +403,6 @@ function prepareImport(app, entityType, csvText, fileName, commit) {
   const headers = matrix[0].map(inputHeaderKey); const required = entityType === 'DOI_TUONG' ? ['Ten_DT', 'Phan_Loai'] : ['Ma_DT', 'Loai_Cong_No', 'So_Chung_Tu', 'Ngay_Chung_Tu', 'Han_Thanh_Toan', 'So_Tien_Goc']; const missing = required.filter(field => !headers.includes(field)); if (missing.length) throw new Error(`Thiếu cột bắt buộc: ${missing.join(', ')}`);
   const existingPartners = app.store.all('DOI_TUONG'); const existingDocs = app.store.all('CHUNG_TU_CONG_NO'); const seen = new Set(); const valid = []; const errors = []; const importKey = `IMP-${Utilities.getUuid().slice(0, 8).toUpperCase()}`;
   matrix.slice(1).forEach((values, index) => { if (!values.some(value => String(value).trim())) return; const rowNumber = index + 2; const row = normalizeImportRow(Object.fromEntries(headers.map((header, column) => [header, values[column] ?? '']))); try { if (entityType === 'DOI_TUONG') validatePartnerImport(row, existingPartners, seen); else validateDocumentImport(row, existingPartners, existingDocs, seen); valid.push({ rowNumber, row }); } catch (error) { errors.push({ row: rowNumber, message: error.message, data: row }); } });
-  if (!commit && errors.length) app.store.insertMany('IMPORT_ERRORS', errors.slice(0, 100).map(error => ({ Import_Key: importKey, Dong: error.row, Loai: entityType, Noi_Dung_Loi: error.message, Du_Lieu_JSON: JSON.stringify(error.data).slice(0, 45000), Created_At: new Date() })));
   let success = 0;
   const result = { importKey, fileName: String(fileName).slice(0, 200), total: valid.length + errors.length, valid: valid.length, success, failed: errors.length, errors: errors.slice(0, 100), preview: valid.slice(0, 10).map(item => ({ row: item.rowNumber, data: item.row })), canCommit: errors.length === 0 && valid.length > 0, committed: commit };
   if (commit && errors.length) {
@@ -211,7 +414,7 @@ function prepareImport(app, entityType, csvText, fileName, commit) {
     result.success = success;
     app.store.insert('IMPORT_LOG', { Ma_Import: importKey, Loai: entityType, Ten_File: result.fileName, Tong_Dong: result.total, Thanh_Cong: success, That_Bai: 0, Chi_Tiet_Loi: '', Nguoi_Dung: app.identity.email, Created_At: new Date() });
   }
-  writeImportResultSheet(app, entityType, result); return result;
+  if (commit) writeImportResultSheet(app, entityType, result); return result;
 }
 
 function normalizeImportRow(row) {
@@ -276,5 +479,6 @@ function formatVnd(value) { return `${Number(value).toLocaleString('vi-VN')} ₫
 function stamp() { return new Date().toISOString().replace(/[:.]/g, '-'); }
 function normalizeText(value) { return String(value || '').trim().toLocaleLowerCase('vi-VN').replace(/\s+/g, ' '); }
 function isEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim()); }
+function maskAccountNumber(value) { const text = plainAccountNumber(value); return `${'*'.repeat(Math.max(0, text.length - 4))}${text.slice(-4)}`; }
 
-globalThis.FinDebtApp = { doGet, getSessionContext, createWorkspace, connectWorkspace, disconnectWorkspace, initialize, bootstrap, loadWorkspaceHealth, syncDataConsole, loadDocumentsPage, savePartner, createDocument, recordPayment, voidRecord, savePromise, saveBankAccount, getVietQr, processReminders, createReminderTrigger, createBackupTrigger, createBackup, listBackups, restoreBackup, cloneWorkspace, exportCsv, previewCsv, commitCsv, importCsv, importFromSheet, saveMember, removeMember, generateDebtPdf };
+globalThis.FinDebtApp = { doGet, include, getSessionContext, bootstrapSession, createWorkspace, connectWorkspace, disconnectWorkspace, initialize, bootstrap, loadWorkspaceHealth, syncDataConsole, loadDocumentsPage, savePartner, createDocument, recordPayment, voidRecord, savePromise, saveBankAccount, saveCompanyProfile, getVietQr, processReminders, seedDemoData, createReminderTrigger, createBackupTrigger, createBackup, listBackups, restoreBackup, cloneWorkspace, exportCsv, previewCsv, commitCsv, importCsv, importFromSheet, saveMember, removeMember, generateDebtPdf };

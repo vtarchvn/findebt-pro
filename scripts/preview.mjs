@@ -23,7 +23,7 @@ demo.dashboard.overdue = demo.documents.filter(row => row.daysOverdue > 0);
 
 createServer(async (request, response) => {
   let html = await readFile(new URL('../web/Index.html', import.meta.url), 'utf8');
-  html = html.replace('setupNav();renderIcons();', `window.__FINDEBT_PREVIEW__=${JSON.stringify(demo)};state=window.__FINDEBT_PREVIEW__;setupNav();renderIcons();`);
+  html = html.replace('restoreDebtView();setupNav();renderIcons();', `window.__FINDEBT_PREVIEW__=${JSON.stringify(demo)};state=window.__FINDEBT_PREVIEW__;restoreDebtView();setupNav();renderIcons();`);
   const mode = new URL(request.url, 'http://127.0.0.1').searchParams.get('setup');
   const previewCall = mode === '1' ? "showSetup({email:'owner@minhan.vn'});" : mode === 'progress' ? "showSetupProgress('Công ty Kiến trúc VTARC');" : mode === 'success' ? `showWorkspaceSuccess({data:${JSON.stringify(demo)}},false);` : 'render();';
   html = html.replace("};load();\n</script>", `};${previewCall}\n</script>`);

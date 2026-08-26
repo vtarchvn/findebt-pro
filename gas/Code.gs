@@ -1,5 +1,7 @@
 function doGet(e) { return FinDebtApp.doGet(e); }
+function include(filename) { return FinDebtApp.include(filename); }
 function getSessionContext() { return FinDebtApp.getSessionContext(); }
+function bootstrapSession() { return FinDebtApp.bootstrapSession(); }
 function createWorkspace(company) { return FinDebtApp.createWorkspace(company); }
 function connectWorkspace(rootFolderId) { return FinDebtApp.connectWorkspace(rootFolderId); }
 function disconnectWorkspace() { return FinDebtApp.disconnectWorkspace(); }
@@ -14,8 +16,10 @@ function recordPayment(input) { return FinDebtApp.recordPayment(input); }
 function voidRecord(table, id) { return FinDebtApp.voidRecord(table, id); }
 function savePromise(input) { return FinDebtApp.savePromise(input); }
 function saveBankAccount(input) { return FinDebtApp.saveBankAccount(input); }
+function saveCompanyProfile(input) { return FinDebtApp.saveCompanyProfile(input); }
 function getVietQr(documentId, accountId) { return FinDebtApp.getVietQr(documentId, accountId); }
 function processReminders() { return FinDebtApp.processReminders(); }
+function seedDemoData() { return FinDebtApp.seedDemoData(); }
 function createReminderTrigger() { return FinDebtApp.createReminderTrigger(); }
 function createBackupTrigger() { return FinDebtApp.createBackupTrigger(); }
 function createBackup() { return FinDebtApp.createBackup(); }
@@ -29,4 +33,4 @@ function importFromSheet(entityType) { return FinDebtApp.importFromSheet(entityT
 function saveMember(input) { return FinDebtApp.saveMember(input); }
 function removeMember(email) { return FinDebtApp.removeMember(email); }
 function cloneWorkspace(mode) { return FinDebtApp.cloneWorkspace(mode); }
-function generateDebtPdf(partnerId) { return FinDebtApp.generateDebtPdf(partnerId); }
+function generateDebtPdf(partnerId, documentType) { return FinDebtApp.generateDebtPdf(partnerId, documentType); }

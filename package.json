@@ -1,6 +1,6 @@
 {
   "name": "findebt-pro",
-  "version": "2.2.2",
+"version": "2.8.0",
   "private": true,
   "description": "FINDEBT PRO - Vietnamese receivables and payables management on Google Apps Script",
   "type": "module",
@@ -10,16 +10,21 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "build": "node scripts/build.mjs",
+    "smoke:production": "node scripts/smoke-production.mjs",
     "preview": "node scripts/preview.mjs",
     "push": "npm run build && clasp push",
     "deploy": "npm run build && clasp deploy",
     "check": "npm run lint && npm test && npm run build"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/preset-env": "^8.0.2",
     "@eslint/js": "^9.34.0",
     "@google/clasp": "^3.0.6-alpha",
     "esbuild": "^0.25.9",
     "eslint": "^9.34.0",
+    "espree": "^10.4.0",
+    "google-auth-library": "^10.5.0",
     "globals": "^16.3.0",
     "vitest": "^3.2.4"
   },

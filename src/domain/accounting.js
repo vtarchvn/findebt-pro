@@ -48,7 +48,9 @@ export function validateAllocation(payment, allocations, documentMap) {
     if (doc.partnerId !== payment.partnerId || doc.type !== payment.type) throw new Error('Thanh toán và chứng từ không cùng đối tượng/loại công nợ');
     return sum + assertVnd(allocation.amount, 'Tiền phân bổ');
   }, 0);
-  if (total > assertVnd(payment.amount, 'Tiền thanh toán')) throw new Error('Tổng phân bổ vượt số tiền thanh toán');
+  const paymentAmount = assertVnd(payment.amount, 'Tiền thanh toán');
+  if (total > paymentAmount) throw new Error('Tổng phân bổ vượt số tiền thanh toán');
+  if (total < paymentAmount) throw new Error('Toàn bộ số tiền thanh toán phải được phân bổ vào chứng từ');
   return total;
 }
 
@@ -62,9 +64,15 @@ export function creditLimitCheck(currentDebt, newCredit, limit) {
 
 export function summarize(documents, allocations, payments, today = new Date()) {
   const aging = Object.fromEntries(Object.values(AGING_BUCKETS).map(k => [k, 0]));
+  const activePayments = new Set(payments.filter(payment => !payment.voided).map(payment => payment.id));
+  const allocatedByDocument = new Map();
+  allocations.forEach(allocation => {
+    if (allocation.voided || !activePayments.has(allocation.paymentId)) return;
+    allocatedByDocument.set(allocation.documentId, (allocatedByDocument.get(allocation.documentId) || 0) + assertVnd(allocation.amount, 'Tiền phân bổ'));
+  });
   let receivable = 0; let payable = 0; let overdue = 0;
   const rows = documents.map(document => {
-    const state = documentState(document, allocations, payments, today);
+    const state = documentStateFromAllocated(document, allocatedByDocument.get(document.id) || 0, today);
     if (state.outstanding && state.bucket) aging[state.bucket] += state.outstanding;
     if (document.type === DOC_TYPES.RECEIVABLE) receivable += state.outstanding;
     if (document.type === DOC_TYPES.PAYABLE) payable += state.outstanding;
@@ -87,8 +95,27 @@ export function vietQrUrl(account, document, state) {
   return `https://img.vietqr.io/image/${encodeURIComponent(account.bankCode)}-${encodeURIComponent(account.accountNumber)}-compact2.png?amount=${state.outstanding}&addInfo=${encodeURIComponent(info)}&accountName=${encodeURIComponent(account.accountName)}`;
 }
 
-function toDay(value) {
+export function civilDateKey(value) {
+  if (typeof value === 'string') {
+    const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+  }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) throw new Error('Ngày không hợp lệ');
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export function toDay(value) {
+  const [year, month, date] = civilDateKey(value).split('-').map(Number);
+  return Date.UTC(year, month - 1, date);
+}
+
+function documentStateFromAllocated(document, allocatedAmount, today) {
+  if (document.voided) return { outstanding: 0, status: DOC_STATUS.VOID, bucket: null, daysOverdue: 0 };
+  const original = assertVnd(document.originalAmount, 'Tiền chứng từ');
+  const allocated = Math.min(original, assertVnd(allocatedAmount, 'Tiền phân bổ'));
+  const due = original - allocated;
+  const lateDays = daysOverdue(document.dueDate, today);
+  const status = due === 0 ? DOC_STATUS.PAID : allocated > 0 ? DOC_STATUS.PARTIAL : lateDays > 0 ? DOC_STATUS.OVERDUE : DOC_STATUS.OPEN;
+  return { outstanding: due, status, bucket: due > 0 ? agingBucket(document.dueDate, today) : null, daysOverdue: lateDays };
 }

@@ -1,5 +1,11 @@
 # Hướng dẫn sử dụng FINDEBT PRO
 
+> **Luôn xem bản mới nhất:** [github.com/vtarchvn/findebt-pro/blob/main/docs/USER_GUIDE.md](https://github.com/vtarchvn/findebt-pro/blob/main/docs/USER_GUIDE.md)
+
+## Tác giả và hỗ trợ
+
+Mở `Tác giả & hỗ trợ` ở thanh điều hướng máy tính hoặc chọn `Thêm → Hỗ trợ & hướng dẫn` trên điện thoại. Nút **Mở hướng dẫn sử dụng** dẫn thẳng tới bản tài liệu mới nhất trên GitHub; cùng trang này còn có email, website, mã nguồn và phiên bản đang dùng. Nếu muốn mời tác giả một ly cà phê, quét VietQR hoặc sao chép số tài khoản Techcombank hiển thị ngay trong tab; QR không đặt trước số tiền.
+
 Tài liệu này dành cho kế toán, chủ doanh nghiệp và người theo dõi công nợ. Ảnh minh họa dùng dữ liệu mẫu; dữ liệu thật được lưu riêng trong Google Sheets của tài khoản triển khai.
 
 ## 1. Mở ứng dụng và cấp quyền
@@ -145,7 +151,16 @@ Nhập mã ngân hàng, số tài khoản, tên chủ tài khoản và tên hi�
 
 ![Dashboard mobile](images/user-guide/10-mobile-dashboard.png)
 
-Mobile có bottom navigation cho Tổng quan, Đối tượng, Công nợ, Nhắc nợ và menu **Thêm**. Menu Thêm mở Thu/Trả tiền, Báo cáo/Import và Cài đặt/Phân quyền. Ưu tiên trên điện thoại:
+Điện thoại có thanh điều hướng cố định gồm **Tổng quan**, **Đối tác**, **Công nợ**, **Nhắc nợ** và **Thêm**. Mục đang xem có màu và vạch chỉ báo riêng. Nhấn **Thêm** để mở bảng chức năng:
+
+- **Ghi nhận thu / trả tiền** là hành động chính, đặt ở đầu bảng để thao tác nhanh.
+- **Báo cáo & dữ liệu** mở PDF, nhập hàng loạt, CSV và backup.
+- **Cài đặt workspace** mở hồ sơ doanh nghiệp, thành viên và tài khoản ngân hàng.
+- **Hỗ trợ & hướng dẫn** mở tài liệu chính thức, thông tin liên hệ và tác giả.
+
+Bảng chức năng có thể đóng bằng nút ×, chạm vùng nền hoặc phím Esc. Các nút có vùng chạm tối thiểu phù hợp cho thao tác một tay và tôn trọng vùng an toàn ở cạnh dưới màn hình.
+
+Ưu tiên trên điện thoại:
 
 1. Xem khoản quá hạn.
 2. Tìm khách hàng/chứng từ.
