@@ -34,6 +34,8 @@ const deploymentId = targetUrl.match(/\/s\/([^/]+)\/exec/)?.[1];
 if (deploymentId && sandboxConfig.deploymentId !== deploymentId) throw new Error('Deployment ID trong sandbox không khớp URL kiểm tra.');
 const userHtml = sandboxConfig.userHtml;
 if (!userHtml.includes('Client ES5 đã được chèn')) throw new Error('Production chưa chèn Client ES5.');
+if (userHtml.includes('assets/vtarch-symbol-256.png')) throw new Error('Production còn đường dẫn logo tương đối không được Apps Script phục vụ.');
+if ((userHtml.match(/data:image\/png;base64/g) || []).length < 3) throw new Error('Production chưa nhúng đủ logo cho màn hình tải, thanh bên và trang tác giả.');
 
 const scripts = extractScripts(userHtml);
 scripts.forEach(code => parse(code, { ecmaVersion: 5, sourceType: 'script' }));

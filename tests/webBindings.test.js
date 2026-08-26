@@ -55,6 +55,13 @@ describe('web inline action bindings', () => {
     expect(source).toContain('class="support-guide"');
   });
 
+  it('embeds the app logo in both static and dynamic Apps Script output', () => {
+    const build = fs.readFileSync(new URL('../scripts/build.mjs', import.meta.url), 'utf8');
+    expect(build).toContain('const indexHtml = embedAppLogo(compatibleTemplate)');
+    expect(build).toContain('const clientScript = embedAppLogo(transpiled.code)');
+    expect(build).toContain('clientScript.includes(appLogoPath)');
+  });
+
   it('uses the proven staged startup flow', () => {
     const source = fs.readFileSync(new URL('../web/Index.html', import.meta.url), 'utf8');
     expect(source).toContain("const session=await rpc('getSessionContext')");
