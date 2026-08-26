@@ -28,11 +28,21 @@ describe('user guide assets', () => {
     const source = fs.readFileSync(guidePath, 'utf8');
     [
       '01-dashboard.png',
+      '02-partners.png',
+      '03-add-partner.png',
+      '04-debts.png',
+      '05-add-document.png',
+      '06-record-payment.png',
+      '07-reminders.png',
       '08-reports.png',
       '08a-payment-notice.png',
-      '08b-reconciliation.png'
+      '08b-reconciliation.png',
+      '09-settings.png',
+      '09b-bank-account.png',
+      '10-mobile-dashboard.png',
+      '10b-mobile-menu.png',
+      '11-about-support.png'
     ].forEach(image => expect(source).toContain(image));
-    ['02-partners.png', '04-debts.png', '09-settings.png', '10-mobile-dashboard.png'].forEach(image => expect(source).not.toContain(image));
     expect(source).toContain('FINDEBT PRO 2.8.1');
     expect(source).toContain('deployment `@42`');
     expect(source).toContain('| Đối tác | Báo cáo & dữ liệu |');

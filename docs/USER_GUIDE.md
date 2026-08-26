@@ -8,6 +8,10 @@
 
 Mở `Tác giả & hỗ trợ` ở thanh điều hướng máy tính hoặc chọn `Thêm → Hỗ trợ & hướng dẫn` trên điện thoại. Nút **Mở hướng dẫn sử dụng** dẫn thẳng tới bản tài liệu mới nhất trên GitHub; cùng trang này còn có email, website, mã nguồn và phiên bản đang dùng. Nếu muốn mời tác giả một ly cà phê, quét VietQR hoặc sao chép số tài khoản Techcombank hiển thị ngay trong tab; QR không đặt trước số tiền.
 
+![Tác giả và hỗ trợ FINDEBT PRO](images/user-guide/11-about-support.png)
+
+_Trang hỗ trợ tập trung tài liệu chính thức, kênh liên hệ, mã nguồn, phiên bản ứng dụng và VietQR ủng hộ tác giả._
+
 Tài liệu này dành cho kế toán, chủ doanh nghiệp và người theo dõi công nợ. Ảnh minh họa dùng dữ liệu mẫu; dữ liệu thật được lưu riêng trong Google Sheets của tài khoản triển khai.
 
 ## 1. Mở ứng dụng và cấp quyền
@@ -49,6 +53,14 @@ Mọi số liệu được tính phía máy chủ. Không nhập trạng thái t
 
 Mở **Khách hàng & NCC** trên máy tính hoặc **Đối tác** trên điện thoại để tìm và quản lý khách hàng/nhà cung cấp. Chọn **Thêm khách hàng / NCC**, sau đó nhập:
 
+![Danh sách khách hàng và nhà cung cấp](images/user-guide/02-partners.png)
+
+_Danh sách có ô tìm kiếm, bộ lọc phân loại, hạn mức và trạng thái nhắc nợ của từng hồ sơ._
+
+![Biểu mẫu thêm khách hàng hoặc nhà cung cấp](images/user-guide/03-add-partner.png)
+
+_Biểu mẫu tạo hồ sơ mới; các trường bắt buộc được đánh dấu bằng dấu `*`._
+
 - Tên và phân loại khách hàng/NCC.
 - Số điện thoại, email và địa chỉ.
 - Hạn mức tín dụng đối với khách hàng.
@@ -61,12 +73,18 @@ Nếu có số dư đầu kỳ, hệ thống tự tạo chứng từ `DAU-KY` đ
 
 Mở **Công nợ** để xem Sổ công nợ phải thu và phải trả. Màn hình tải tối đa 40 dòng mỗi lần và có các công cụ:
 
+![Sổ công nợ phải thu và phải trả](images/user-guide/04-debts.png)
+
+_Chọn một dòng để xem chi tiết, số còn lại, hạn thanh toán và các hành động Thu/trả tiền hoặc VietQR._
+
 - Tìm theo số chứng từ hoặc tên khách hàng/NCC.
 - Lọc **Tất cả**, **Còn nợ**, **Quá hạn** hoặc **Đã trả**.
 - Lọc riêng phải thu/phải trả và sắp xếp theo ngày mới nhất, hạn gần nhất hoặc dư nợ lớn nhất.
 - Chọn một dòng để mở panel chi tiết; từ đây có thể ghi nhận thu/trả tiền hoặc tạo VietQR.
 
 Chọn **Thêm chứng từ**:
+
+![Biểu mẫu thêm chứng từ công nợ](images/user-guide/05-add-document.png)
 
 1. Chọn khách hàng hoặc nhà cung cấp.
 2. Chọn **Phải thu** cho bán nợ hoặc **Phải trả** cho mua nợ/NCC.
@@ -79,6 +97,10 @@ Outstanding được tính theo công thức `Tiền gốc − Tổng thanh toá
 ## 5. Ghi nhận thu hoặc trả tiền
 
 Từ panel chi tiết chứng từ, chọn **Thu / trả tiền**; hoặc chọn **Thu tiền nhanh** trên Dashboard. Trên điện thoại, mở **Thêm → Ghi nhận thu / trả tiền**.
+
+![Biểu mẫu ghi nhận thu hoặc trả tiền](images/user-guide/06-record-payment.png)
+
+_Chọn đúng khách hàng/NCC và loại giao dịch trước; danh sách chứng từ sẽ được lọc theo lựa chọn đó._
 
 1. Chọn thu tiền hoặc trả tiền NCC.
 2. Nhập ngày, số tiền, phương thức và tham chiếu ngân hàng.
@@ -103,6 +125,10 @@ Với chứng từ phải thu còn dư, chọn biểu tượng QR trên dòng ch
 Nội dung chuyển khoản có dạng `FIN {Mã đối tượng} {Mã chứng từ}`. Sau khi nhận tiền, kế toán vẫn phải ghi nhận thanh toán và phân bổ để đóng công nợ.
 
 ## 7. Nhắc nợ và lời hẹn thanh toán
+
+![Trung tâm nhắc nợ và lời hẹn](images/user-guide/07-reminders.png)
+
+_Màn hình cho biết lời hẹn hôm nay, sắp tới, đã trễ và các nguyên tắc an toàn trước khi bật trigger hằng ngày._
 
 Lịch mặc định: T−3, T, T+3, T+7, T+14, T+30, sau đó 7 ngày/lần. Hệ thống kiểm tra lại outstanding ngay trước khi gửi và không gửi nếu:
 
@@ -147,6 +173,10 @@ Không khôi phục backup khi người khác đang nhập giao dịch. Nên th�
 
 Mở **Cài đặt** để xem hồ sơ phát hành chứng từ, trạng thái workspace, thành viên và danh sách tài khoản VietQR. Owner hoặc Quản trị có thể chọn **Sửa hồ sơ** để cập nhật logo, tên doanh nghiệp, mã số thuế, địa chỉ, email kế toán, website và người đại diện; thông tin mới được áp dụng cho các PDF tạo sau đó.
 
+![Cài đặt workspace FINDEBT PRO](images/user-guide/09-settings.png)
+
+_Cài đặt gom hồ sơ doanh nghiệp, liên kết Sheet/Drive, kiểm tra thông minh, thành viên và tài khoản VietQR._
+
 Trong **Kiểm tra thông minh**:
 
 - **Kiểm tra lại** quét quyền Drive, backup và chất lượng dữ liệu.
@@ -155,9 +185,17 @@ Trong **Kiểm tra thông minh**:
 
 Trong **Tài khoản VietQR**, chọn **Thêm tài khoản**.
 
+![Biểu mẫu thêm tài khoản VietQR](images/user-guide/09b-bank-account.png)
+
+_Số tài khoản được nhập dưới dạng chuỗi chữ số để không bị thêm dấu chấm hoặc mất số 0 ở đầu._
+
 Nhập mã ngân hàng, số tài khoản, tên chủ tài khoản và tên hiển thị. Đánh dấu **Mặc định** cho tài khoản dùng khi chứng từ không chỉ định tài khoản riêng. Hãy quét thử QR với số tiền nhỏ trước khi sử dụng thực tế.
 
 ## 10. Sử dụng trên điện thoại
+
+| Dashboard điện thoại | Bảng tất cả chức năng |
+| --- | --- |
+| ![Dashboard FINDEBT PRO trên điện thoại](images/user-guide/10-mobile-dashboard.png) | ![Menu tất cả chức năng trên điện thoại](images/user-guide/10b-mobile-menu.png) |
 
 Điện thoại có thanh điều hướng cố định gồm **Tổng quan**, **Đối tác**, **Công nợ**, **Nhắc nợ** và **Thêm**. Mục đang xem có màu và vạch chỉ báo riêng. Nhấn **Thêm** để mở bảng chức năng:
 
